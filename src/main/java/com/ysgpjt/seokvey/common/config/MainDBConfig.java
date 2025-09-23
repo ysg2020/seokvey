@@ -1,4 +1,4 @@
-package com.ysgpjt.seokvey.common;
+package com.ysgpjt.seokvey.common.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
