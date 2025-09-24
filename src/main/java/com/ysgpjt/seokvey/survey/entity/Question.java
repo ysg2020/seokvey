@@ -1,11 +1,18 @@
 package com.ysgpjt.seokvey.survey.entity;
 
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
+import com.ysgpjt.seokvey.type.SeletionType;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Question extends BaseEntity {
 
     @Id
@@ -14,15 +21,16 @@ public class Question extends BaseEntity {
 
     @JoinColumn
     @ManyToOne
-    private Survey survey;            // 설문 고유값
+    private Survey survey;                  // 설문 고유값
 
     @Column
-    private String content;             // 문항 내용
+    private String content;                 // 문항 내용
 
     @Column
-    private String selectionType;       // 선택 종류
+    @Enumerated(EnumType.STRING)
+    private SeletionType selectionType;     // 선택 종류
 
     @Column
-    private Integer orderNo;            // 문항 순서
+    private Integer orderNo;                // 문항 순서
 
 }

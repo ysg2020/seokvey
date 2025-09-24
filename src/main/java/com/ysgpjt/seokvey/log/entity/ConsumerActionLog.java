@@ -5,10 +5,16 @@ import com.ysgpjt.seokvey.consumer.entity.Consumer;
 import com.ysgpjt.seokvey.type.ActionType;
 import com.ysgpjt.seokvey.type.TargetType;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ConsumerActionLog extends BaseEntity {
 
     @Id

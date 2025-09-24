@@ -3,12 +3,18 @@ package com.ysgpjt.seokvey.log.entity;
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
 import com.ysgpjt.seokvey.consumer.entity.Consumer;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SurveyHistory extends BaseEntity {
 
     @Id

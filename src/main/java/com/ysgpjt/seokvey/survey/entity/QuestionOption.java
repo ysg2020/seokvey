@@ -2,10 +2,16 @@ package com.ysgpjt.seokvey.survey.entity;
 
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QuestionOption extends BaseEntity {
 
     @Id

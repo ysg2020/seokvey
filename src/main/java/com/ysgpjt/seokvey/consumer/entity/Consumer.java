@@ -3,6 +3,7 @@ package com.ysgpjt.seokvey.consumer.entity;
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Consumer extends BaseEntity {
 
     @Id
