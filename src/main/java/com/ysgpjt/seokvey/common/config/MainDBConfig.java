@@ -1,5 +1,6 @@
 package com.ysgpjt.seokvey.common.config;
 
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ import java.util.Objects;
 
 public class MainDBConfig {
 
+    // JPA 설정
     @Primary
     @Bean(name = "mainEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean mainEntityManagerFactory(
@@ -39,4 +41,13 @@ public class MainDBConfig {
             @Qualifier("mainEntityManagerFactory") LocalContainerEntityManagerFactoryBean emf) {
         return new JpaTransactionManager(Objects.requireNonNull(emf.getObject()));
     }
+
+    // Querydsl 설정
+    @Primary
+    @Bean
+    public JPAQueryFactory mainQueryFactory(
+            @Qualifier("mainEntityManagerFactory") LocalContainerEntityManagerFactoryBean emf) {
+        return new JPAQueryFactory(Objects.requireNonNull(emf.getObject()).createEntityManager());
+    }
+
 }

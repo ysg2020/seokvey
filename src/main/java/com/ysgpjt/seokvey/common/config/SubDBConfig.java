@@ -1,10 +1,12 @@
 package com.ysgpjt.seokvey.common.config;
 
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.metamodel.EntityType;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 public class SubDBConfig {
 
+    // JPA 설정
     @Bean(name = "subEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean subEntityManagerFactory(
             EntityManagerFactoryBuilder builder, @Qualifier("subDataSource") DataSource dataSource) {
@@ -43,4 +46,12 @@ public class SubDBConfig {
         System.out.println("Managed Entities: " + entities);
         return new JpaTransactionManager(Objects.requireNonNull(emf.getObject()));
     }
+
+    // Querydsl 설정
+    @Bean
+    public JPAQueryFactory subQueryFactory(
+            @Qualifier("subEntityManagerFactory") LocalContainerEntityManagerFactoryBean emf) {
+        return new JPAQueryFactory(Objects.requireNonNull(emf.getObject()).createEntityManager());
+    }
+
 }

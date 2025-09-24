@@ -1,14 +1,12 @@
 package com.ysgpjt.seokvey.survey.service;
 
-import com.ysgpjt.seokvey.survey.dto.QuestionCreateRequest;
-import com.ysgpjt.seokvey.survey.dto.QuestionOptionCreateRequest;
-import com.ysgpjt.seokvey.survey.dto.SurveyCreateRequest;
-import com.ysgpjt.seokvey.survey.dto.SurveyResponse;
+import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.Question;
 import com.ysgpjt.seokvey.survey.entity.QuestionOption;
 import com.ysgpjt.seokvey.survey.entity.Survey;
 import com.ysgpjt.seokvey.survey.repository.QuestionOptionRepository;
 import com.ysgpjt.seokvey.survey.repository.QuestionRepository;
+import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
 import com.ysgpjt.seokvey.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +21,7 @@ public class SurveyService {
     private final SurveyRepository surveyRepository;
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository questionOptionRepository;
+    private final SurveyQueryRepository surveyQueryRepository;
 
 
     public SurveyResponse createSurvey(SurveyCreateRequest surveyCreateRequest) {
@@ -83,6 +82,12 @@ public class SurveyService {
                 .surveyId(survey.getId())
                 .build();
 
+
+    }
+
+    public List<SurveyQuery> getSurvey(Long surveyId) {
+        List<SurveyQuery> survey = surveyQueryRepository.findSurvey(surveyId);
+        return survey;
 
     }
 }
