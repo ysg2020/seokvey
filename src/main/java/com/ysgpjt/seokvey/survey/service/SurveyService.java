@@ -11,9 +11,9 @@ import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
 import com.ysgpjt.seokvey.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +26,7 @@ public class SurveyService {
     private final SurveyQueryRepository surveyQueryRepository;
 
 
+    @Transactional
     public SurveyResponse createSurvey(SurveyCreateRequest surveyCreateRequest) {
         // 설문 문항이 없는 경우
         if(surveyCreateRequest.getQuestions() == null) {
@@ -180,4 +181,91 @@ public class SurveyService {
         return result;
 
     }
+
+    @Transactional
+    public SurveyResponse updateSurvey(SurveyUpdateRequest surveyUpdateRequest) {
+        // 1. Survey 수정
+        // 수정할 설문 조회
+        Survey survey = surveyRepository.findById(surveyUpdateRequest.getSurveyId()).orElse(null);
+        survey.modify(surveyUpdateRequest);
+
+        // 2. Question 수정 (없으면 추가 있으면 수정)
+        // 문항만큼 반복
+        for (QuestionUpdateRequest questionUpdateRequest : surveyUpdateRequest.getQuestions()) {
+            Question question;
+
+            if (questionUpdateRequest.getQuestionId() == null) {
+                // 문항 새로 추가
+                question = Question.builder()
+                        .survey(survey)
+                        .content(questionUpdateRequest.getContent())
+                        .selectionType(questionUpdateRequest.getSelectionType())
+                        .orderNo(questionUpdateRequest.getOrderNo())
+                        .build();
+                questionRepository.save(question);
+            } else {
+                // 수정할 문항 조회
+                question = questionRepository.findById(questionUpdateRequest.getQuestionId()).orElse(null);
+                // 문항 수정
+                question.modify(questionUpdateRequest);
+            }
+
+            // Option 삭제 : DB에 있으나 요청에 없는경우 삭제
+            Set<Long> requestOptionIds = questionUpdateRequest.getOptions().stream()
+                    .map(QuestionOptionUpdateRequest::getQuestionOptionId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // DB에 존재하는 Option 목록
+            List<QuestionOption> existingOptions = questionOptionRepository.findByQuestion(question);
+
+            // 요청에 없는 Option 삭제
+            for (QuestionOption existing : existingOptions) {
+                if (!requestOptionIds.contains(existing.getId())) {
+                    questionOptionRepository.delete(existing);
+                }
+            }
+
+            // 3. Option 수정 (없으면 추가 있으면 수정)
+            // 문항 옵션수만큼 반복
+            for (QuestionOptionUpdateRequest questionOptionUpdateRequest : questionUpdateRequest.getOptions()) {
+                if (questionOptionUpdateRequest.getQuestionOptionId() == null) {
+                    // 옵션 새로 추가
+                    QuestionOption newQuestionOption = QuestionOption.builder()
+                            .question(question)
+                            .content(questionOptionUpdateRequest.getContent())
+                            .orderNo(questionOptionUpdateRequest.getOrderNo())
+                            .build();
+                    questionOptionRepository.save(newQuestionOption);
+                } else {
+                    // 수정할 옵션 조회
+                    QuestionOption questionOption = questionOptionRepository.findById(questionOptionUpdateRequest.getQuestionOptionId()).orElse(null);
+                    // 옵션 수정
+                    questionOption.modify(questionOptionUpdateRequest);
+                }
+            }
+        }
+        // Question 삭제 : DB에 있으나 요청에 없는경우 삭제
+        // 요청으로 들어온 Question ID 목록
+        Set<Long> requestQuestionIds = surveyUpdateRequest.getQuestions().stream()
+                .map(QuestionUpdateRequest::getQuestionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // DB에 존재하는 Question 목록
+        List<Question> existingQuestions = questionRepository.findBySurvey(survey);
+
+        // 요청에 없는 Question 삭제
+        for (Question existing : existingQuestions) {
+            if (!requestQuestionIds.contains(existing.getId())) {
+                questionRepository.delete(existing);
+            }
+        }
+
+
+        return SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .build();
+    }
+
 }

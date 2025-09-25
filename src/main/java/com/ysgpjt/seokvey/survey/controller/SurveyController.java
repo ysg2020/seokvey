@@ -26,10 +26,14 @@ public class SurveyController {
     public List<QuestionResponse> getQuestion(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.getQuestion(surveyReadRequest);
     }
-
     @PostMapping
     public SurveyResponse createSurvey(@RequestBody SurveyCreateRequest surveyCreateRequest) {
         return surveyService.createSurvey(surveyCreateRequest);
     }
+    @PutMapping
+    public SurveyResponse updateSurvey(@RequestBody SurveyUpdateRequest surveyUpdateRequest) {
+        return surveyService.updateSurvey(surveyUpdateRequest);
+    }
+
 
 }

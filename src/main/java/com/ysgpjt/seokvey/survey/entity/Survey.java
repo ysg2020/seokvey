@@ -1,6 +1,7 @@
 package com.ysgpjt.seokvey.survey.entity;
 
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
+import com.ysgpjt.seokvey.survey.dto.SurveyUpdateRequest;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,5 +32,13 @@ public class Survey extends BaseEntity {
 
     @Column
     private LocalDateTime endDt;       // 설문 종료일
+
+    // 문항 수정
+    public void modify(SurveyUpdateRequest surveyUpdateRequest) {
+        this.title = surveyUpdateRequest.getTitle();
+        this.description = surveyUpdateRequest.getDescription();
+        this.startDt = surveyUpdateRequest.getStartDt();
+        this.endDt = surveyUpdateRequest.getEndDt();
+    }
 
 }
