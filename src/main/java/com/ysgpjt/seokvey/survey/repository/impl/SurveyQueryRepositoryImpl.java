@@ -8,6 +8,7 @@ import com.ysgpjt.seokvey.survey.dto.SurveyReadRequest;
 import com.ysgpjt.seokvey.survey.entity.QQuestion;
 import com.ysgpjt.seokvey.survey.entity.QQuestionOption;
 import com.ysgpjt.seokvey.survey.entity.QSurvey;
+import com.ysgpjt.seokvey.survey.entity.Survey;
 import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -19,6 +20,15 @@ import java.util.List;
 public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
 
     private final JPAQueryFactory mainQueryFactory;
+
+    @Override
+    public List<Survey> findAllSurvey(SurveyReadRequest surveyReadRequest) {
+        return mainQueryFactory.selectFrom(QSurvey.survey)
+                .offset((long) surveyReadRequest.getPage() * surveyReadRequest.getSize())
+                .limit(surveyReadRequest.getSize())
+                .fetch();
+
+    }
 
     @Override
     public List<SurveyQuery> findSurvey(SurveyReadRequest surveyReadRequest) {
@@ -49,6 +59,7 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .fetch();
     }
 
+    @Override
     public List<QuestionQuery> findQuestion(SurveyReadRequest surveyReadRequest) {
         QQuestion question = QQuestion.question;
         QQuestionOption option = QQuestionOption.questionOption;

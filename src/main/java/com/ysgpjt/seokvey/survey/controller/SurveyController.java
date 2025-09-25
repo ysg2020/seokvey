@@ -14,6 +14,10 @@ public class SurveyController {
 
     private final SurveyService surveyService;
 
+    @GetMapping("/all")
+    public List<SurveyResponse> getAllSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
+        return surveyService.getAllSurvey(surveyReadRequest);
+    }
     @GetMapping
     public List<SurveyResponse> getSurveyDetail(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.getSurveyDetail(surveyReadRequest);

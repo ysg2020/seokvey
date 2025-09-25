@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +85,14 @@ public class SurveyService {
                 .build();
 
 
+    }
+
+    public List<SurveyResponse> getAllSurvey(SurveyReadRequest surveyReadRequest) {
+        List<Survey> surveyList = surveyQueryRepository.findAllSurvey(surveyReadRequest);
+        // Survey -> SurveyResponse 변환
+        return surveyList.stream()
+                .map(SurveyResponse::fromSurvey)
+                .collect(Collectors.toList());
     }
 
     public List<SurveyResponse> getSurveyDetail(SurveyReadRequest surveyReadRequest) {
