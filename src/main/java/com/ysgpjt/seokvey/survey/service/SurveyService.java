@@ -1,5 +1,6 @@
 package com.ysgpjt.seokvey.survey.service;
 
+import com.ysgpjt.seokvey.common.HierarchyMapper;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.Question;
 import com.ysgpjt.seokvey.survey.entity.QuestionOption;
@@ -85,9 +86,89 @@ public class SurveyService {
 
     }
 
-    public List<SurveyQuery> getSurvey(Long surveyId) {
-        List<SurveyQuery> survey = surveyQueryRepository.findSurvey(surveyId);
-        return survey;
+    public List<SurveyResponse> getSurveyDetail(SurveyReadRequest surveyReadRequest) {
+        List<SurveyQuery> getSurveyQueryList = surveyQueryRepository.findSurvey(surveyReadRequest);
+
+        // Flat List -> 계층 구조로 변환
+        List<SurveyResponse> result = HierarchyMapper.toHierarchy(
+                // Param 1 : 평탄화된 데이터 리스트
+                getSurveyQueryList,
+                // Param 2 : 부모 ID 추출 함수
+                SurveyQuery::getSurveyId,
+                // Param 3 : 부모 객체 생성 함수
+                p -> SurveyResponse.builder()
+                        .surveyId(p.getSurveyId())
+                        .title(p.getTitle())
+                        .description(p.getDescription())
+                        .startDt(p.getStartDt())
+                        .endDt(p.getEndDt())
+                        .questions(new ArrayList<>())
+                        .build(),
+                // Param 4 : 부모에 자식 붙이는 함수
+                (survey, row) -> {
+                    // Survey 안에 Question 계층 생성
+                    List<QuestionResponse> questions = survey.getQuestions();
+
+                    // 이미 존재하는 Question 확인
+                    QuestionResponse question = questions.stream()
+                            .filter(q -> q.getQuestionId().equals(row.getQuestionId()))
+                            .findFirst()
+                            .orElseGet(() -> {
+                                QuestionResponse q = QuestionResponse.builder()
+                                        .questionId(row.getQuestionId())
+                                        .content(row.getQuestionContent())
+                                        .selectionType(row.getSelectionType())
+                                        .orderNo(row.getQuestionOrderNo())
+                                        .options(new ArrayList<>())
+                                        .build();
+                                questions.add(q);
+                                return q;
+                            });
+
+                    // Question 안에 Option 추가
+                    if (row.getOptionId() != null) {
+                        question.addOption(QuestionOptionResponse.builder()
+                                .questionOptionId(row.getOptionId())
+                                .content(row.getOptionContent())
+                                .orderNo(row.getOptionOrderNo())
+                                .build());
+                    }
+                }
+        );
+
+        return result;
+
+    }
+
+    public List<QuestionResponse> getQuestion(SurveyReadRequest surveyReadRequest) {
+        List<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
+        // Flat List -> 계층 구조로 변환
+        List<QuestionResponse> result = HierarchyMapper.toHierarchy(
+                // Param 1 : 평탄화된 데이터 리스트
+                getQuestionQueryList,
+                // Param 2 : 부모 ID 추출 함수
+                QuestionQuery::getQuestionId,
+                // Param 3 : 부모 객체 생성 함수
+                p -> QuestionResponse.builder()
+                        .questionId(p.getQuestionId())
+                        .content(p.getQuestionContent())
+                        .selectionType(p.getSelectionType())
+                        .orderNo(p.getQuestionOrderNo())
+                        .options(new ArrayList<>())
+                        .build(),
+                // Param 4 : 부모에 자식 붙이는 함수
+                (question, row) -> {
+                    // Question 안에 Option 추가
+                    if (row.getOptionId() != null) {
+                        question.addOption(QuestionOptionResponse.builder()
+                                .questionOptionId(row.getOptionId())
+                                .content(row.getOptionContent())
+                                .orderNo(row.getOptionOrderNo())
+                                .build());
+                    }
+                });
+
+        return result;
 
     }
 }

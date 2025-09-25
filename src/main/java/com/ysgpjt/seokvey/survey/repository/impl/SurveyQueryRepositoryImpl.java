@@ -2,7 +2,9 @@ package com.ysgpjt.seokvey.survey.repository.impl;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.ysgpjt.seokvey.survey.dto.QuestionQuery;
 import com.ysgpjt.seokvey.survey.dto.SurveyQuery;
+import com.ysgpjt.seokvey.survey.dto.SurveyReadRequest;
 import com.ysgpjt.seokvey.survey.entity.QQuestion;
 import com.ysgpjt.seokvey.survey.entity.QQuestionOption;
 import com.ysgpjt.seokvey.survey.entity.QSurvey;
@@ -19,7 +21,7 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
     private final JPAQueryFactory mainQueryFactory;
 
     @Override
-    public List<SurveyQuery> findSurvey(Long surveyId) {
+    public List<SurveyQuery> findSurvey(SurveyReadRequest surveyReadRequest) {
         QSurvey survey = QSurvey.survey;
         QQuestion question = QQuestion.question;
         QQuestionOption option = QQuestionOption.questionOption;
@@ -41,7 +43,38 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .from(survey)
                 .leftJoin(question).on(question.survey.eq(survey))
                 .leftJoin(option).on(option.question.eq(question))
-                .where(survey.id.eq(surveyId))
+                .where(survey.id.eq(surveyReadRequest.getSurveyId()))
+                .offset((long) surveyReadRequest.getPage() * surveyReadRequest.getSize())
+                .limit(surveyReadRequest.getSize())
+                .fetch();
+    }
+
+    public List<QuestionQuery> findQuestion(SurveyReadRequest surveyReadRequest) {
+        QQuestion question = QQuestion.question;
+        QQuestionOption option = QQuestionOption.questionOption;
+
+        // 페이징 처리한 문항 아이디 리스트 조회
+        List<Long> questionIdList = mainQueryFactory.select(question.id)
+                .from(question)
+                .leftJoin(option).on(option.question.eq(question))
+                .where(question.survey.id.eq(surveyReadRequest.getSurveyId()))
+                .offset((long) surveyReadRequest.getPage() * surveyReadRequest.getSize())
+                .limit(surveyReadRequest.getSize())
+                .fetch();
+
+        return mainQueryFactory.select(Projections.constructor(QuestionQuery.class
+                        ,question.id
+                        ,question.content
+                        ,question.selectionType
+                        ,question.orderNo
+                        ,option.id
+                        ,option.content
+                        ,option.orderNo
+                ))
+                .from(question)
+                .leftJoin(option).on(option.question.eq(question))
+                .where(question.id.in(questionIdList))
+                .orderBy(question.orderNo.asc(), option.orderNo.asc())
                 .fetch();
     }
 }

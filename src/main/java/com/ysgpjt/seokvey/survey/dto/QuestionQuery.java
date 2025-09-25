@@ -12,13 +12,8 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SurveyQuery {
+public class QuestionQuery {
 
-    private Long surveyId;                  // 설문 고유값
-    private String title;                   // 제목
-    private String description;             // 설명
-    private LocalDateTime startDt;          // 설문 시작일
-    private LocalDateTime endDt;            // 설문 종료일
     private Long questionId;                // 문항 고유값
     private String questionContent;         // 문항 내용
     private SeletionType selectionType;     // 선택 종류

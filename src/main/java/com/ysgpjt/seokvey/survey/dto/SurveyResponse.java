@@ -12,5 +12,11 @@ import java.util.List;
 @Builder
 public class SurveyResponse {
 
-    private Long surveyId;                            // 설문 고유값
+    private Long surveyId;                              // 설문 고유값
+    private String title;                               // 제목
+    private String description;                         // 설명
+    private LocalDateTime startDt;                      // 설문 시작일
+    private LocalDateTime endDt;                        // 설문 종료일
+    private List<QuestionResponse> questions;       // 문항 리스트
+
 }
