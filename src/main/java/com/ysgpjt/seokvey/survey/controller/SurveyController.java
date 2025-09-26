@@ -34,6 +34,10 @@ public class SurveyController {
     public SurveyResponse updateSurvey(@RequestBody SurveyUpdateRequest surveyUpdateRequest) {
         return surveyService.updateSurvey(surveyUpdateRequest);
     }
+    @DeleteMapping
+    public SurveyResponse deleteSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
+        return surveyService.deleteSurvey(surveyReadRequest);
+    }
 
 
 }

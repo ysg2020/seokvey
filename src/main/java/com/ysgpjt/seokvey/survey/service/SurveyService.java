@@ -268,4 +268,26 @@ public class SurveyService {
                 .build();
     }
 
+    public SurveyResponse deleteSurvey(SurveyReadRequest surveyReadRequest) {
+        // 삭제할 설문 조회
+        Survey survey = surveyRepository.findById(surveyReadRequest.getSurveyId()).orElse(null);
+
+        // 삭제할 문항 조회
+        List<Question> questionList = questionRepository.findBySurvey(survey);
+
+        // 문항만큼 반복
+        for (Question question : questionList) {
+            // 삭제할 옵션 조회
+            List<QuestionOption> questionOptionList = questionOptionRepository.findByQuestion(question);
+            questionOptionRepository.deleteAll(questionOptionList);
+        }
+
+        questionRepository.deleteAll(questionList);
+        surveyRepository.delete(survey);
+
+        return SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .build();
+    }
+
 }
