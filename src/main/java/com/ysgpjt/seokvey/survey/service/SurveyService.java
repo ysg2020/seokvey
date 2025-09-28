@@ -1,21 +1,22 @@
 package com.ysgpjt.seokvey.survey.service;
 
 import com.ysgpjt.seokvey.common.HierarchyMapper;
+import com.ysgpjt.seokvey.common.SecurityUtil;
 import com.ysgpjt.seokvey.survey.dto.*;
-import com.ysgpjt.seokvey.survey.entity.Question;
-import com.ysgpjt.seokvey.survey.entity.QuestionOption;
-import com.ysgpjt.seokvey.survey.entity.Survey;
-import com.ysgpjt.seokvey.survey.repository.QuestionOptionRepository;
-import com.ysgpjt.seokvey.survey.repository.QuestionRepository;
-import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
-import com.ysgpjt.seokvey.survey.repository.SurveyRepository;
+import com.ysgpjt.seokvey.survey.entity.*;
+import com.ysgpjt.seokvey.survey.repository.*;
+import com.ysgpjt.seokvey.type.SeletionType;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SurveyService {
@@ -24,6 +25,8 @@ public class SurveyService {
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository questionOptionRepository;
     private final SurveyQueryRepository surveyQueryRepository;
+    private final SurveyParticipationRepository surveyParticipationRepository;
+    private final SurveyAnswerRepository surveyAnswerRepository;
 
 
     @Transactional
@@ -40,6 +43,7 @@ public class SurveyService {
 
             // 문항 옵션이 없거나 2개보다 적은경우
             if(options == null || options.size() < 2) {
+                log.warn("문항 옵션은 2개 이상이어야합니다");
                 return null;
             }
         }
@@ -290,4 +294,89 @@ public class SurveyService {
                 .build();
     }
 
+    @Transactional
+    public SurveyResponse participateSurvey(SurveyParticipationRequest surveyParticipationRequest, String anonymousToken, String ipAddress) {
+        // 참여할 설문 조회
+        Survey survey = surveyRepository.findById(surveyParticipationRequest.getSurveyId()).orElse(null);
+
+        // 설문 참여 저장
+        SurveyParticipation.SurveyParticipationBuilder surveyParticipationBuilder = SurveyParticipation.builder()
+                .survey(survey)
+                .surveyDt(surveyParticipationRequest.getSurveyDt());
+
+        // 하나의 설문 중복 참여 불가
+        // 익명 사용자인 경우
+        if (anonymousToken != null) {
+            Optional<SurveyParticipation> anonymousTokenSurvey = surveyParticipationRepository.findBySurveyAndAnonymousToken(survey, anonymousToken);
+
+            // 익명 사용자 토큰에 해당하는 설문이 있는 경우
+            if (anonymousTokenSurvey.isPresent()) {
+                log.warn("이미 설문한 익명 사용자 토큰 입니다. anonymousToken : {}", anonymousTokenSurvey.get().getAnonymousToken());
+                return null;
+            } else {
+                Optional<SurveyParticipation> anonymousIpAddressSurvey = surveyParticipationRepository.findBySurveyAndIpAddress(survey, ipAddress);
+
+                // ip주소에 해당하는 설문이 있는 경우
+                if (anonymousIpAddressSurvey.isPresent()) {
+                    log.warn("이미 설문한 ip주소 입니다.  ipAddress : {}", anonymousIpAddressSurvey.get().getIpAddress());
+                    return null;
+                }
+
+            }
+            surveyParticipationBuilder.anonymousToken(anonymousToken)
+                    .ipAddress(ipAddress);
+
+        // 로그인한 사용자 인경우
+        } else {
+            Optional<SurveyParticipation> consumerSurvey = surveyParticipationRepository.findBySurveyAndUserId(survey, SecurityUtil.getCurrentUserId());
+
+            // 사용자 아이디에 해당하는 설문이 있는 경우
+            if (consumerSurvey.isPresent()) {
+                log.warn("이미 설문한 사용자 입니다.  consumerId : {}", consumerSurvey.get().getUserId());
+                return null;
+            }
+            surveyParticipationBuilder.userId(SecurityUtil.getCurrentUserId())
+                    .ipAddress(ipAddress);
+
+        }
+        SurveyParticipation surveyParticipation = surveyParticipationBuilder.build();
+        surveyParticipationRepository.save(surveyParticipation);
+
+        // 설문 문항수 만큼 반복
+        List<SurveyAnswerRequest> answerList = surveyParticipationRequest.getAnswers();
+        for (SurveyAnswerRequest answer : answerList) {
+            Question question = questionRepository.findById(answer.getQuestionId()).get();
+            List<Long> questionOptionIds = answer.getQuestionOptionIds();
+
+            // 선택 종류가 단일 선택인데 여러 옵션이 있는 경우
+            if (question.getSelectionType().equals(SeletionType.SINGLE) && questionOptionIds.size() > 1) {
+                log.warn("단일 선택 문항은 옵션 1개만 선택해야합니다 size : {}", questionOptionIds.size());
+                return null;
+            }
+
+            // 설문 문항 옵션수 만큼 반복
+            for (Long questionOptionId : questionOptionIds) {
+                QuestionOption questionOption = questionOptionRepository.findById(questionOptionId).get();
+
+                // 문항에 해당하지 않는 문항 옵션인경우
+                if (!questionOption.getQuestion().getId().equals(question.getId())) {
+                    log.warn("문항에 해당하지 않는 옵션입니다 dbAtId : {}  paramId : {}  ", questionOption.getQuestion().getId(),question.getId());
+                    return null;
+                }
+
+                SurveyAnswer surveyAnswer = SurveyAnswer.builder()
+                        .surveyParticipation(surveyParticipation)
+                        .question(question)
+                        .questionOption(questionOption)
+                        .questionContent(question.getContent())
+                        .questionOptionContent(questionOption.getContent())
+                        .build();
+                surveyAnswerRepository.save(surveyAnswer);
+            }
+        }
+        return SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .build();
+
+    }
 }

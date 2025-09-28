@@ -1,7 +1,11 @@
 package com.ysgpjt.seokvey.survey.controller;
 
+import com.ysgpjt.seokvey.common.CookieUtil;
+import com.ysgpjt.seokvey.common.SecurityUtil;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.service.SurveyService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +41,23 @@ public class SurveyController {
     @DeleteMapping
     public SurveyResponse deleteSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.deleteSurvey(surveyReadRequest);
+    }
+    @PostMapping("/participation")
+    public SurveyResponse participateSurvey(@RequestBody SurveyParticipationRequest surveyParticipationRequest
+            , HttpServletRequest httpServletRequest
+            , HttpServletResponse httpServletResponse) {
+
+        String anonymousToken = null;
+        String ipAddress = null;
+
+        // 로그인한 사용자가 아닌경우
+        if (!SecurityUtil.isLoggedIn()) {
+            // 토큰 값과 IP 주소 가져오기
+            anonymousToken = CookieUtil.getAnonymousToken(httpServletRequest, httpServletResponse);
+            ipAddress = httpServletRequest.getRemoteAddr();
+        }
+
+        return surveyService.participateSurvey(surveyParticipationRequest,anonymousToken,ipAddress);
     }
 
 

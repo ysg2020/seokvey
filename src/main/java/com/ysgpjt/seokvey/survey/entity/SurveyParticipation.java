@@ -1,7 +1,6 @@
-package com.ysgpjt.seokvey.log.entity;
+package com.ysgpjt.seokvey.survey.entity;
 
 import com.ysgpjt.seokvey.common.entity.BaseEntity;
-import com.ysgpjt.seokvey.consumer.entity.Consumer;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SurveyHistory extends BaseEntity {
+public class SurveyParticipation extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,15 +22,20 @@ public class SurveyHistory extends BaseEntity {
 
     @JoinColumn
     @ManyToOne
-    private Consumer consumer;                  // 사용자 고유값
+    private Survey survey;              // 설문 고유값
 
     @Column
-    private Long questionOptionId;              // 문항 옵션 고유값
+    private String userId;              // 사용자 아이디
 
     @Column
-    private String anonymousToken;              // 익명 사용자 식별 토큰
+    private String anonymousToken;      // 익명 사용자 토큰
 
     @Column
-    private LocalDateTime surveyHistoryDt;      // 설문 기록 시각
+    private String ipAddress;           // ip 주소
+
+    @Column
+    private LocalDateTime surveyDt;     // 설문 참여 시각
+
+
 
 }
