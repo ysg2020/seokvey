@@ -42,6 +42,10 @@ public class SurveyController {
     public SurveyResponse deleteSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.deleteSurvey(surveyReadRequest);
     }
+    @GetMapping("/participation")
+    public List<SurveyParticipationResponse> getSurveyParticipation(@RequestBody SurveyParticipationReadRequest surveyParticipationReadRequest) {
+        return surveyService.getSurveyParticipation(surveyParticipationReadRequest);
+    }
     @PostMapping("/participation")
     public SurveyResponse participateSurvey(@RequestBody SurveyParticipationRequest surveyParticipationRequest
             , HttpServletRequest httpServletRequest

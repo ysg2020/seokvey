@@ -379,4 +379,49 @@ public class SurveyService {
                 .build();
 
     }
+
+    public List<SurveyParticipationResponse> getSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest) {
+        List<SurveyParticipationQuery> surveyParticipation = surveyQueryRepository.findSurveyParticipation(surveyParticipationReadRequest);
+
+        List<SurveyParticipationResponse> result = HierarchyMapper.toHierarchy(
+                surveyParticipation
+                , SurveyParticipationQuery::getSurveyParticipationId
+                , p -> SurveyParticipationResponse.builder()
+                        .surveyParticipationId(p.getSurveyParticipationId())
+                        .surveyId(p.getSurveyId())
+                        .userId(p.getUserId())
+                        .surveyDt(p.getSurveyDt())
+                        .questions(new ArrayList<>())
+                        .build()
+                ,// Param 4 : 부모에 자식 붙이는 함수
+                (survey, row) -> {
+                    // Survey 안에 Question 계층 생성
+                    List<SurveyParticipationQuestionResponse> questions = survey.getQuestions();
+
+                    // 이미 존재하는 Question 확인
+                    SurveyParticipationQuestionResponse question = questions.stream()
+                            .filter(q -> q.getQuestionId().equals(row.getQuestionId()))
+                            .findFirst()
+                            .orElseGet(() -> {
+                                SurveyParticipationQuestionResponse q = SurveyParticipationQuestionResponse.builder()
+                                        .questionId(row.getQuestionId())
+                                        .questionContent(row.getQuestionContent())
+                                        .options(new ArrayList<>())
+                                        .build();
+                                questions.add(q);
+                                return q;
+                            });
+                    // Question 안에 Option 추가
+                    if (row.getQuestionOptionId() != null) {
+                        question.addOption(SurveyParticipationOptionResponse.builder()
+                                .questionOptionId(row.getQuestionOptionId())
+                                .questionOptionContent(row.getQuestionOptionContent())
+                                .build());
+                    }
+                }
+        );
+
+        return result;
+
+    }
 }

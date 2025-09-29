@@ -2,13 +2,8 @@ package com.ysgpjt.seokvey.survey.repository.impl;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.ysgpjt.seokvey.survey.dto.QuestionQuery;
-import com.ysgpjt.seokvey.survey.dto.SurveyQuery;
-import com.ysgpjt.seokvey.survey.dto.SurveyReadRequest;
-import com.ysgpjt.seokvey.survey.entity.QQuestion;
-import com.ysgpjt.seokvey.survey.entity.QQuestionOption;
-import com.ysgpjt.seokvey.survey.entity.QSurvey;
-import com.ysgpjt.seokvey.survey.entity.Survey;
+import com.ysgpjt.seokvey.survey.dto.*;
+import com.ysgpjt.seokvey.survey.entity.*;
 import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -86,6 +81,28 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .leftJoin(option).on(option.question.eq(question))
                 .where(question.id.in(questionIdList))
                 .orderBy(question.orderNo.asc(), option.orderNo.asc())
+                .fetch();
+    }
+
+    @Override
+    public List<SurveyParticipationQuery> findSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest) {
+        QSurveyParticipation surveyParticipation = QSurveyParticipation.surveyParticipation;
+        QSurveyAnswer surveyAnswer = QSurveyAnswer.surveyAnswer;
+        return mainQueryFactory.select(Projections.constructor(SurveyParticipationQuery.class
+                        , surveyParticipation.id
+                        , surveyParticipation.survey.id
+                        , surveyParticipation.userId
+                        , surveyParticipation.surveyDt
+                        , surveyAnswer.question.id
+                        , surveyAnswer.question.content
+                        , surveyAnswer.questionOption.id
+                        , surveyAnswer.questionOption.content
+                ))
+                .from(surveyParticipation)
+                .leftJoin(surveyAnswer).on(surveyParticipation.eq(surveyAnswer.surveyParticipation))
+                .where(surveyParticipation.userId.eq(surveyParticipationReadRequest.getUserId()))
+                .offset((long) surveyParticipationReadRequest.getPage() * surveyParticipationReadRequest.getSize())
+                .limit(surveyParticipationReadRequest.getSize())
                 .fetch();
     }
 }
