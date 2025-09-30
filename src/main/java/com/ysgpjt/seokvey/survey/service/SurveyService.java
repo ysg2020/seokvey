@@ -310,7 +310,102 @@ public class SurveyService {
         // 참여할 설문 조회
         Survey survey = surveyRepository.findById(surveyParticipationRequest.getSurveyId()).orElse(null);
 
-        // 설문 참여 저장
+        // 설문 참여(survey_participation) 생성
+        SurveyParticipation surveyParticipation = getSurveyParticipation(surveyParticipationRequest, anonymousToken, ipAddress, survey);
+
+        // 문항 조회
+        List<Question> questions = questionRepository.findBySurvey(survey);
+        Map<Long, Question> dbQuestionMap = questions.stream()
+                .collect(Collectors.toMap(Question::getId, q -> q));
+        List<Long> dbQuestionIds = dbQuestionMap.keySet().stream().toList();
+
+        // 요청 값 (문항 id - 옵션 idList)  Map 생성
+        Map<Long, List<Long>> answerMap = surveyParticipationRequest.getAnswers().stream().collect(Collectors.toMap(
+                SurveyAnswerRequest::getQuestionId,
+                SurveyAnswerRequest::getQuestionOptionIds
+        ));
+
+        // 문항 검증
+        validateQuestions(dbQuestionIds, answerMap);
+
+        // 옵션 조회 - 앞서 만든 요청값 map을 통해 db에서 옵션 조회
+        // 1. 요청에 들어온 모든 옵션 ID를 flatMap으로 모아줌
+        List<Long> allOptionIds = answerMap.values().stream()
+                .flatMap(List::stream)   // List<List<Long>> -> Stream<Long>
+                .toList();
+
+        // 2. DB에서 해당 옵션들을 한 번에 조회
+        List<QuestionOption> optionEntities = questionOptionRepository.findAllById(allOptionIds);
+
+        // 3. Map 형태로 변환 (id → entity 매핑)
+        Map<Long, QuestionOption> optionMap = optionEntities.stream()
+                .collect(Collectors.toMap(QuestionOption::getId, o -> o));
+
+        // SurveyAnswer 생성
+        List<SurveyAnswer> surveyAnswers = new ArrayList<>();
+        for (SurveyAnswerRequest answer : surveyParticipationRequest.getAnswers()) {
+            Question question = dbQuestionMap.get(answer.getQuestionId());
+            validateAnswer(question, answer);
+
+            for (Long optionId : answer.getQuestionOptionIds()) {
+                QuestionOption option = optionMap.get(optionId);
+                validateOption(question, option);
+
+                surveyAnswers.add(SurveyAnswer.builder()
+                        .surveyParticipation(surveyParticipation)
+                        .question(question)
+                        .questionOption(option)
+                        .questionContent(question.getContent())
+                        .questionOptionContent(option.getContent())
+                        .build());
+            }
+        }
+
+        surveyAnswerRepository.saveAll(surveyAnswers);
+
+        return SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .build();
+
+    }
+
+    private void validateQuestions(List<Long> dbQuestionIds, Map<Long, List<Long>> answerMap) {
+        Set<Long> dbQuestionIdSet = new HashSet<>(dbQuestionIds);
+        Set<Long> requestQuestionIdSet = answerMap.keySet();
+
+        // 1. 문항 개수 다르면 → 누락 or 중복
+        if (dbQuestionIdSet.size() != requestQuestionIdSet.size()) {
+            log.warn("응답하지 않은 문항이 있거나 중복된 문항이 있습니다. dbQuestionIdSize : {} , requestQuestionIdSize : {}", dbQuestionIdSet.size(), requestQuestionIdSet.size());
+        }
+
+        // 2. 요청 문항이 DB 문항에 모두 포함되는지 확인
+        if (!dbQuestionIdSet.containsAll(requestQuestionIdSet)) {
+            log.warn("유효하지 않은 문항이 포함되어 있습니다.");
+        }
+
+        // 3. 각 문항에 옵션이 최소 1개 이상 있는지 확인
+        for (Long questionId : requestQuestionIdSet) {
+            List<Long> optionIds = answerMap.get(questionId);
+            if (optionIds == null || optionIds.isEmpty()) {
+                log.warn("문항에 대한 옵션이 선택되지 않았습니다. questionId : {}", questionId);
+            }
+        }
+    }
+
+    private void validateAnswer(Question question, SurveyAnswerRequest answer) {
+        if (question.getSelectionType().equals(SeletionType.SINGLE) && answer.getQuestionOptionIds().size() > 1) {
+            log.warn("단일 선택 문항은 옵션 1개만 선택해야 합니다. questionId : {}", question.getId());
+        }
+    }
+
+    private void validateOption(Question question, QuestionOption option) {
+        if (!option.getQuestion().getId().equals(question.getId())) {
+            log.warn("옵션이 해당 문항에 속하지 않습니다. questionId : {} ,optionId : {}", question.getId(), option.getId());
+        }
+    }
+
+    private SurveyParticipation getSurveyParticipation(SurveyParticipationRequest surveyParticipationRequest, String anonymousToken, String ipAddress, Survey survey) {
+        // 설문 참여 생성
         SurveyParticipation.SurveyParticipationBuilder surveyParticipationBuilder = SurveyParticipation.builder()
                 .survey(survey)
                 .surveyDt(surveyParticipationRequest.getSurveyDt());
@@ -352,43 +447,7 @@ public class SurveyService {
         }
         SurveyParticipation surveyParticipation = surveyParticipationBuilder.build();
         surveyParticipationRepository.save(surveyParticipation);
-
-        // 설문 문항수 만큼 반복
-        List<SurveyAnswerRequest> answerList = surveyParticipationRequest.getAnswers();
-        for (SurveyAnswerRequest answer : answerList) {
-            Question question = questionRepository.findById(answer.getQuestionId()).get();
-            List<Long> questionOptionIds = answer.getQuestionOptionIds();
-
-            // 선택 종류가 단일 선택인데 여러 옵션이 있는 경우
-            if (question.getSelectionType().equals(SeletionType.SINGLE) && questionOptionIds.size() > 1) {
-                log.warn("단일 선택 문항은 옵션 1개만 선택해야합니다 size : {}", questionOptionIds.size());
-                return null;
-            }
-
-            // 설문 문항 옵션수 만큼 반복
-            for (Long questionOptionId : questionOptionIds) {
-                QuestionOption questionOption = questionOptionRepository.findById(questionOptionId).get();
-
-                // 문항에 해당하지 않는 문항 옵션인경우
-                if (!questionOption.getQuestion().getId().equals(question.getId())) {
-                    log.warn("문항에 해당하지 않는 옵션입니다 dbAtId : {}  paramId : {}  ", questionOption.getQuestion().getId(),question.getId());
-                    return null;
-                }
-
-                SurveyAnswer surveyAnswer = SurveyAnswer.builder()
-                        .surveyParticipation(surveyParticipation)
-                        .question(question)
-                        .questionOption(questionOption)
-                        .questionContent(question.getContent())
-                        .questionOptionContent(questionOption.getContent())
-                        .build();
-                surveyAnswerRepository.save(surveyAnswer);
-            }
-        }
-        return SurveyResponse.builder()
-                .surveyId(survey.getId())
-                .build();
-
+        return surveyParticipation;
     }
 
     public List<SurveyParticipationResponse> getSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest) {
