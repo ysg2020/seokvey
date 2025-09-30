@@ -63,6 +63,10 @@ public class SurveyController {
 
         return surveyService.participateSurvey(surveyParticipationRequest,anonymousToken,ipAddress);
     }
+    @GetMapping("/result")
+    public List<SurveyResultResponse> getSurveyResult(@RequestBody SurveyResultReadRequest surveyResultReadRequest) {
+        return surveyService.getSurveyResult(surveyResultReadRequest);
+    }
 
 
 }

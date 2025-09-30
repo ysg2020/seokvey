@@ -11,4 +11,5 @@ public interface SurveyQueryRepository {
     List<SurveyQuery> findSurvey(SurveyReadRequest surveyReadRequest);
     List<QuestionQuery> findQuestion(SurveyReadRequest surveyReadRequest);
     List<SurveyParticipationQuery> findSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest);
+    List<SurveyResultQuery> findSurveyResult(SurveyResultReadRequest surveyResultReadRequest);
 }

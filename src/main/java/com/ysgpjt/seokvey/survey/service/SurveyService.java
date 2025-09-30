@@ -424,4 +424,46 @@ public class SurveyService {
         return result;
 
     }
+
+    public List<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
+        List<SurveyResultQuery> surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+        List<SurveyResultResponse> result = HierarchyMapper.toHierarchy(
+                surveyResult
+                , SurveyResultQuery::getSurveyId
+                , p -> SurveyResultResponse.builder()
+                        .surveyId(p.getSurveyId())
+                        .surveyTitle(p.getSurveyTitle())
+                        .questions(new ArrayList<>())
+                        .build()
+                , (survey, row) -> {
+                    // Survey 안에 Question 계층 생성
+                    List<SurveyResultQuestionResponse> questions = survey.getQuestions();
+
+                    // 이미 존재하는 Question 확인
+                    SurveyResultQuestionResponse question = questions.stream()
+                            .filter(q -> q.getQuestionId().equals(row.getQuestionId()))
+                            .findFirst()
+                            .orElseGet(() -> {
+                                SurveyResultQuestionResponse q = SurveyResultQuestionResponse.builder()
+                                        .questionId(row.getQuestionId())
+                                        .questionContent(row.getQuestionContent())
+                                        .options(new ArrayList<>())
+                                        .build();
+                                questions.add(q);
+                                return q;
+                            });
+                    // Question 안에 Option 추가
+                    if (row.getQuestionOptionId() != null) {
+                        question.addOption(SurveyResultOptionResponse.builder()
+                                .questionOptionId(row.getQuestionOptionId())
+                                .questionOptionContent(row.getQuestionOptionContent())
+                                .selectedCount(row.getSelectedCount())
+                                .selectedRatio(row.getSelectedRatio())
+                                .build());
+                    }
+
+                }
+        );
+        return result;
+    }
 }
