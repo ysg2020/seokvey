@@ -100,45 +100,29 @@ public class SurveyService {
                 .collect(Collectors.toList());
     }
 
-    public List<SurveyResponse> getSurveyDetail(SurveyReadRequest surveyReadRequest) {
-        List<SurveyQuery> getSurveyQueryList = surveyQueryRepository.findSurvey(surveyReadRequest);
+    public SurveyResponse getSurvey(SurveyReadRequest surveyReadRequest) {
+        Survey survey = surveyQueryRepository.findSurvey(surveyReadRequest);
+        List<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
+        Long questionTotalCount = surveyQueryRepository.findQuestionTotalCount(surveyReadRequest);
 
+        // 문항과 문항 옵션 계층 구조 변환
         // Flat List -> 계층 구조로 변환
-        List<SurveyResponse> result = HierarchyMapper.toHierarchy(
+        List<QuestionResponse> questions = HierarchyMapper.toHierarchy(
                 // Param 1 : 평탄화된 데이터 리스트
-                getSurveyQueryList,
+                getQuestionQueryList,
                 // Param 2 : 부모 ID 추출 함수
-                SurveyQuery::getSurveyId,
+                QuestionQuery::getQuestionId,
                 // Param 3 : 부모 객체 생성 함수
-                p -> SurveyResponse.builder()
-                        .surveyId(p.getSurveyId())
-                        .title(p.getTitle())
-                        .description(p.getDescription())
-                        .startDt(p.getStartDt())
-                        .endDt(p.getEndDt())
-                        .questions(new ArrayList<>())
+                p -> QuestionResponse.builder()
+                        .questionId(p.getQuestionId())
+                        .content(p.getQuestionContent())
+                        .selectionType(p.getSelectionType())
+                        .orderNo(p.getQuestionOrderNo())
+                        .options(new ArrayList<>())
+                        .questionTotalCount(questionTotalCount)
                         .build(),
                 // Param 4 : 부모에 자식 붙이는 함수
-                (survey, row) -> {
-                    // Survey 안에 Question 계층 생성
-                    List<QuestionResponse> questions = survey.getQuestions();
-
-                    // 이미 존재하는 Question 확인
-                    QuestionResponse question = questions.stream()
-                            .filter(q -> q.getQuestionId().equals(row.getQuestionId()))
-                            .findFirst()
-                            .orElseGet(() -> {
-                                QuestionResponse q = QuestionResponse.builder()
-                                        .questionId(row.getQuestionId())
-                                        .content(row.getQuestionContent())
-                                        .selectionType(row.getSelectionType())
-                                        .orderNo(row.getQuestionOrderNo())
-                                        .options(new ArrayList<>())
-                                        .build();
-                                questions.add(q);
-                                return q;
-                            });
-
+                (question, row) -> {
                     // Question 안에 Option 추가
                     if (row.getOptionId() != null) {
                         question.addOption(QuestionOptionResponse.builder()
@@ -147,15 +131,24 @@ public class SurveyService {
                                 .orderNo(row.getOptionOrderNo())
                                 .build());
                     }
-                }
-        );
+                });
 
+        // 설문 계층 구조 변환
+        SurveyResponse result = SurveyResponse.builder()
+                .surveyId(survey.getId())
+                .title(survey.getTitle())
+                .description(survey.getDescription())
+                .startDt(survey.getStartDt())
+                .endDt(survey.getEndDt())
+                .questions(questions)
+                .build();
         return result;
 
     }
 
     public List<QuestionResponse> getQuestion(SurveyReadRequest surveyReadRequest) {
         List<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
+        Long questionTotalCount = surveyQueryRepository.findQuestionTotalCount(surveyReadRequest);
         // Flat List -> 계층 구조로 변환
         List<QuestionResponse> result = HierarchyMapper.toHierarchy(
                 // Param 1 : 평탄화된 데이터 리스트
@@ -169,6 +162,7 @@ public class SurveyService {
                         .selectionType(p.getSelectionType())
                         .orderNo(p.getQuestionOrderNo())
                         .options(new ArrayList<>())
+                        .questionTotalCount(questionTotalCount)
                         .build(),
                 // Param 4 : 부모에 자식 붙이는 함수
                 (question, row) -> {

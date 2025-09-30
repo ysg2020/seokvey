@@ -23,8 +23,8 @@ public class SurveyController {
         return surveyService.getAllSurvey(surveyReadRequest);
     }
     @GetMapping
-    public List<SurveyResponse> getSurveyDetail(@RequestBody SurveyReadRequest surveyReadRequest) {
-        return surveyService.getSurveyDetail(surveyReadRequest);
+    public SurveyResponse getSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
+        return surveyService.getSurvey(surveyReadRequest);
     }
     @GetMapping("/question")
     public List<QuestionResponse> getQuestion(@RequestBody SurveyReadRequest surveyReadRequest) {

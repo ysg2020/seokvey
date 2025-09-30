@@ -8,8 +8,9 @@ import java.util.List;
 public interface SurveyQueryRepository {
 
     List<Survey> findAllSurvey(SurveyReadRequest surveyReadRequest);
-    List<SurveyQuery> findSurvey(SurveyReadRequest surveyReadRequest);
+    Survey findSurvey(SurveyReadRequest surveyReadRequest);
     List<QuestionQuery> findQuestion(SurveyReadRequest surveyReadRequest);
+    Long findQuestionTotalCount(SurveyReadRequest surveyReadRequest);
     List<SurveyParticipationQuery> findSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest);
     List<SurveyResultQuery> findSurveyResult(SurveyResultReadRequest surveyResultReadRequest);
 }

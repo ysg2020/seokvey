@@ -28,32 +28,11 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
     }
 
     @Override
-    public List<SurveyQuery> findSurvey(SurveyReadRequest surveyReadRequest) {
+    public Survey findSurvey(SurveyReadRequest surveyReadRequest) {
         QSurvey survey = QSurvey.survey;
-        QQuestion question = QQuestion.question;
-        QQuestionOption option = QQuestionOption.questionOption;
-
-        return mainQueryFactory.select(Projections.constructor(SurveyQuery.class
-                        ,survey.id
-                        ,survey.title
-                        ,survey.description
-                        ,survey.startDt
-                        ,survey.endDt
-                        ,question.id
-                        ,question.content
-                        ,question.selectionType
-                        ,question.orderNo
-                        ,option.id
-                        ,option.content
-                        ,option.orderNo
-                        ))
-                .from(survey)
-                .leftJoin(question).on(question.survey.eq(survey))
-                .leftJoin(option).on(option.question.eq(question))
+        return mainQueryFactory.selectFrom(survey)
                 .where(survey.id.eq(surveyReadRequest.getSurveyId()))
-                .offset((long) surveyReadRequest.getPage() * surveyReadRequest.getSize())
-                .limit(surveyReadRequest.getSize())
-                .fetch();
+                .fetchOne();
     }
 
     @Override
@@ -64,7 +43,6 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
         // 페이징 처리한 문항 아이디 리스트 조회
         List<Long> questionIdList = mainQueryFactory.select(question.id)
                 .from(question)
-                .leftJoin(option).on(option.question.eq(question))
                 .where(question.survey.id.eq(surveyReadRequest.getSurveyId()))
                 .offset((long) surveyReadRequest.getPage() * surveyReadRequest.getSize())
                 .limit(surveyReadRequest.getSize())
@@ -84,6 +62,17 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .where(question.id.in(questionIdList))
                 .orderBy(question.orderNo.asc(), option.orderNo.asc())
                 .fetch();
+    }
+
+    @Override
+    public Long findQuestionTotalCount(SurveyReadRequest surveyReadRequest) {
+        QQuestion question = QQuestion.question;
+        Long totalCount = mainQueryFactory.select(question.id.count())
+                .from(question)
+                .where(question.survey.id.eq(surveyReadRequest.getSurveyId()))
+                .fetchOne();
+        return totalCount;
+
     }
 
     @Override

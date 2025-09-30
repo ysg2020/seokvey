@@ -16,7 +16,8 @@ public class QuestionResponse {
     private String content;                                 // 내용
     private SeletionType selectionType;                     // 선택 종류
     private Integer orderNo;                                // 문항 순서
-    private List<QuestionOptionResponse> options;       // 문항 옵션 리스트
+    private List<QuestionOptionResponse> options;           // 문항 옵션 리스트
+    private Long questionTotalCount;                        // 문항 총 갯수
 
     public void addOption(QuestionOptionResponse option) {
         this.options.add(option);
