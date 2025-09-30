@@ -192,6 +192,16 @@ public class SurveyService {
         // 1. Survey 수정
         // 수정할 설문 조회
         Survey survey = surveyRepository.findById(surveyUpdateRequest.getSurveyId()).orElse(null);
+
+        Optional<SurveyParticipation> surveyParticipation = surveyParticipationRepository.findBySurvey(survey);
+        if(surveyParticipation.isPresent()) {
+            log.warn("설문에 참여한 사람이 있습니다. surveyParticipationId : {} ,userId : {} ,anonymousToken : {}"
+                    , surveyParticipation.get().getId()
+                    ,surveyParticipation.get().getUserId()
+                    ,surveyParticipation.get().getAnonymousToken());
+            return null;
+        }
+
         survey.modify(surveyUpdateRequest);
 
         // 2. Question 수정 (없으면 추가 있으면 수정)
