@@ -22,16 +22,19 @@ public class Survey extends BaseEntity {
     private Long id;
 
     @Column
-    private String title;               // 제목
+    private String title;                           // 제목
 
     @Column
-    private String description;         // 설명
+    private String description;                     // 설명
 
     @Column
-    private LocalDateTime startDt;     // 설문 시작일
+    private LocalDateTime startDt;                  // 설문 시작일
 
     @Column
-    private LocalDateTime endDt;       // 설문 종료일
+    private LocalDateTime endDt;                    // 설문 종료일
+
+    @Column
+    private Boolean resultGenerated = false;        // 결과 생성 여부
 
     // 문항 수정
     public void modify(SurveyUpdateRequest surveyUpdateRequest) {
@@ -39,6 +42,11 @@ public class Survey extends BaseEntity {
         this.description = surveyUpdateRequest.getDescription();
         this.startDt = surveyUpdateRequest.getStartDt();
         this.endDt = surveyUpdateRequest.getEndDt();
+    }
+
+    // 결과 생성
+    public void generateResult() {
+        this.resultGenerated = true;
     }
 
 }
