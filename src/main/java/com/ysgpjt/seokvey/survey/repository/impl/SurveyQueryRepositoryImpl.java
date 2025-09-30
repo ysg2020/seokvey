@@ -28,6 +28,12 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
     }
 
     @Override
+    public Long findAllSurveyTotalCount() {
+        QSurvey survey = QSurvey.survey;
+        return mainQueryFactory.select(survey.id.count()).from(survey).fetchOne();
+    }
+
+    @Override
     public Survey findSurvey(SurveyReadRequest surveyReadRequest) {
         QSurvey survey = QSurvey.survey;
         return mainQueryFactory.selectFrom(survey)

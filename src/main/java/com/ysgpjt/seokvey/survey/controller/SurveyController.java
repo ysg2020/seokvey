@@ -19,7 +19,7 @@ public class SurveyController {
     private final SurveyService surveyService;
 
     @GetMapping("/all")
-    public List<SurveyResponse> getAllSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
+    public SurveyListResponse getAllSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.getAllSurvey(surveyReadRequest);
     }
     @GetMapping

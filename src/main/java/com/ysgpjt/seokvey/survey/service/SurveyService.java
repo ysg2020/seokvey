@@ -92,12 +92,19 @@ public class SurveyService {
 
     }
 
-    public List<SurveyResponse> getAllSurvey(SurveyReadRequest surveyReadRequest) {
+    public SurveyListResponse getAllSurvey(SurveyReadRequest surveyReadRequest) {
         List<Survey> surveyList = surveyQueryRepository.findAllSurvey(surveyReadRequest);
-        // Survey -> SurveyResponse 변환
-        return surveyList.stream()
+        Long allSurveyTotalCount = surveyQueryRepository.findAllSurveyTotalCount();
+
+        List<SurveyResponse> surveyResponseList = surveyList.stream()
                 .map(SurveyResponse::fromSurvey)
-                .collect(Collectors.toList());
+                .toList();
+
+        return SurveyListResponse.builder()
+                .surveys(surveyResponseList)
+                .surveyTotalCount(allSurveyTotalCount)
+                .build();
+
     }
 
     public SurveyResponse getSurvey(SurveyReadRequest surveyReadRequest) {
