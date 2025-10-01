@@ -1,4 +1,4 @@
-package com.ysgpjt.seokvey.common;
+package com.ysgpjt.seokvey.common.util;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +14,7 @@ public class SecurityUtil {
     public static String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            return null; // 익명 사용자
+            return null; // 비회원
         }
 
         Object principal = authentication.getPrincipal();

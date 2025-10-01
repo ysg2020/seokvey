@@ -28,7 +28,7 @@ public class SurveyParticipation extends BaseEntity {
     private String userId;              // 사용자 아이디
 
     @Column
-    private String anonymousToken;      // 익명 사용자 토큰
+    private String anonymousToken;      // 비회원 식별 토큰
 
     @Column
     private String ipAddress;           // ip 주소

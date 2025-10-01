@@ -1,7 +1,7 @@
 package com.ysgpjt.seokvey.survey.controller;
 
-import com.ysgpjt.seokvey.common.CookieUtil;
-import com.ysgpjt.seokvey.common.SecurityUtil;
+import com.ysgpjt.seokvey.common.util.CookieUtil;
+import com.ysgpjt.seokvey.common.util.SecurityUtil;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.service.SurveyService;
 import jakarta.servlet.http.HttpServletRequest;

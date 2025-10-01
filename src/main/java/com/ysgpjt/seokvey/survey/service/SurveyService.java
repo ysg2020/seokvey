@@ -1,13 +1,13 @@
 package com.ysgpjt.seokvey.survey.service;
 
 import com.ysgpjt.seokvey.common.HierarchyMapper;
-import com.ysgpjt.seokvey.common.SecurityUtil;
+import com.ysgpjt.seokvey.common.exception.SeokveyException;
+import com.ysgpjt.seokvey.common.util.SecurityUtil;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.*;
 import com.ysgpjt.seokvey.survey.repository.*;
+import com.ysgpjt.seokvey.type.ErrorType;
 import com.ysgpjt.seokvey.type.SeletionType;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,8 @@ public class SurveyService {
     public SurveyResponse createSurvey(SurveyCreateRequest surveyCreateRequest) {
         // 설문 문항이 없는 경우
         if(surveyCreateRequest.getQuestions() == null) {
-            return null;
+            log.warn("설문 문항이 없습니다.");
+            throw new SeokveyException(ErrorType.NOT_ENOUGH_QUESTION);
         }
 
         // 문항 옵션은 무조건 2개 이상이어야함
@@ -44,7 +45,7 @@ public class SurveyService {
             // 문항 옵션이 없거나 2개보다 적은경우
             if(options == null || options.size() < 2) {
                 log.warn("문항 옵션은 2개 이상이어야합니다");
-                return null;
+                throw new SeokveyException(ErrorType.NOT_ENOUGH_OPTION);
             }
         }
 
@@ -199,7 +200,7 @@ public class SurveyService {
                     , surveyParticipation.get().getId()
                     ,surveyParticipation.get().getUserId()
                     ,surveyParticipation.get().getAnonymousToken());
-            return null;
+            throw new SeokveyException(ErrorType.ALREADY_SURVEY_PARTICIPATION);
         }
 
         survey.modify(surveyUpdateRequest);
@@ -376,11 +377,13 @@ public class SurveyService {
         // 1. 문항 개수 다르면 → 누락 or 중복
         if (dbQuestionIdSet.size() != requestQuestionIdSet.size()) {
             log.warn("응답하지 않은 문항이 있거나 중복된 문항이 있습니다. dbQuestionIdSize : {} , requestQuestionIdSize : {}", dbQuestionIdSet.size(), requestQuestionIdSet.size());
+            throw new SeokveyException(ErrorType.NO_RESPONSE_QUESTION);
         }
 
         // 2. 요청 문항이 DB 문항에 모두 포함되는지 확인
         if (!dbQuestionIdSet.containsAll(requestQuestionIdSet)) {
             log.warn("유효하지 않은 문항이 포함되어 있습니다.");
+            throw new SeokveyException(ErrorType.INVALID_QUESTION);
         }
 
         // 3. 각 문항에 옵션이 최소 1개 이상 있는지 확인
@@ -388,6 +391,7 @@ public class SurveyService {
             List<Long> optionIds = answerMap.get(questionId);
             if (optionIds == null || optionIds.isEmpty()) {
                 log.warn("문항에 대한 옵션이 선택되지 않았습니다. questionId : {}", questionId);
+                throw new SeokveyException(ErrorType.NOT_CHOOSE_OPTION);
             }
         }
     }
@@ -395,12 +399,14 @@ public class SurveyService {
     private void validateAnswer(Question question, SurveyAnswerRequest answer) {
         if (question.getSelectionType().equals(SeletionType.SINGLE) && answer.getQuestionOptionIds().size() > 1) {
             log.warn("단일 선택 문항은 옵션 1개만 선택해야 합니다. questionId : {}", question.getId());
+            throw new SeokveyException(ErrorType.ONE_CHOOSE_OPTION);
         }
     }
 
     private void validateOption(Question question, QuestionOption option) {
         if (!option.getQuestion().getId().equals(question.getId())) {
             log.warn("옵션이 해당 문항에 속하지 않습니다. questionId : {} ,optionId : {}", question.getId(), option.getId());
+            throw new SeokveyException(ErrorType.INVALID_OPTION);
         }
     }
 
@@ -411,21 +417,21 @@ public class SurveyService {
                 .surveyDt(surveyParticipationRequest.getSurveyDt());
 
         // 하나의 설문 중복 참여 불가
-        // 익명 사용자인 경우
+        // 비회원인 경우
         if (anonymousToken != null) {
             Optional<SurveyParticipation> anonymousTokenSurvey = surveyParticipationRepository.findBySurveyAndAnonymousToken(survey, anonymousToken);
 
-            // 익명 사용자 토큰에 해당하는 설문이 있는 경우
+            // 비회원 토큰에 해당하는 설문이 있는 경우
             if (anonymousTokenSurvey.isPresent()) {
-                log.warn("이미 설문한 익명 사용자 토큰 입니다. anonymousToken : {}", anonymousTokenSurvey.get().getAnonymousToken());
-                return null;
+                log.warn("이미 설문한 비회원 토큰 입니다. anonymousToken : {}", anonymousTokenSurvey.get().getAnonymousToken());
+                throw new SeokveyException(ErrorType.ALREADY_SURVEY_ANONYMOUS_TOKEN);
             } else {
                 Optional<SurveyParticipation> anonymousIpAddressSurvey = surveyParticipationRepository.findBySurveyAndIpAddress(survey, ipAddress);
 
                 // ip주소에 해당하는 설문이 있는 경우
                 if (anonymousIpAddressSurvey.isPresent()) {
                     log.warn("이미 설문한 ip주소 입니다.  ipAddress : {}", anonymousIpAddressSurvey.get().getIpAddress());
-                    return null;
+                    throw new SeokveyException(ErrorType.ALREADY_SURVEY_IPADDRESS);
                 }
 
             }
@@ -439,7 +445,7 @@ public class SurveyService {
             // 사용자 아이디에 해당하는 설문이 있는 경우
             if (consumerSurvey.isPresent()) {
                 log.warn("이미 설문한 사용자 입니다.  consumerId : {}", consumerSurvey.get().getUserId());
-                return null;
+                throw new SeokveyException(ErrorType.ALREADY_SURVEY_CONSUMER);
             }
             surveyParticipationBuilder.userId(SecurityUtil.getCurrentUserId())
                     .ipAddress(ipAddress);
