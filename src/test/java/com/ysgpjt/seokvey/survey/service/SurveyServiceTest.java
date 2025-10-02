@@ -218,6 +218,7 @@ class SurveyServiceTest {
     }
 
     @Test
+    @DisplayName("응답하지 않는 문항이 있으면 설문 참여 불가")
     void surveyParticipationNotEnoughQuestion() {
         // given
         // 설문 테스트 데이터
@@ -233,16 +234,11 @@ class SurveyServiceTest {
                 .build();
 
         // 설문 참여 데이터 생성
-        // 두번쨰 문항 응답을 하지 않은 경우
-        SurveyAnswerRequest surveyAnswerRequest = SurveyAnswerRequest.builder()
-                // 첫번째 문항에서 첫번째 옵션 선택
-                .questionId(surveyBundle.questions().get(0).getId())
-                .questionOptionIds(Collections.singletonList(surveyBundle.options().get(0).getId()))
-                .build();
-
-        SurveyParticipationRequest request = SurveyParticipationRequest.builder()
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
                 .surveyId(surveyBundle.survey().getId())
-                .answers(Collections.singletonList(surveyAnswerRequest))
+                .addAnswers(surveyBundle.questions().get(0).getId(), Collections.singletonList(surveyBundle.options().get(0).getId()))
+                // 두번쨰 문항 응답을 하지 않은 경우
+                //.addAnswers~
                 .build();
 
         String anonToken = UUID.randomUUID().toString();
@@ -251,9 +247,152 @@ class SurveyServiceTest {
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
 
+        // then
         assertEquals(ErrorType.NO_RESPONSE_QUESTION, seokveyException.getErrorType());
 
 
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 문항이 있으면 설문 참여 불가")
+    void surveyParticipationInvalidQuestion() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+        // questionId의 최댓값
+        Long maxQuestionId = surveyBundle.questions().stream().mapToLong(q -> q.getId()).max().orElse(0L);
+
+        // 존재하지 않는 questionId
+        Long invalidQuestionId = maxQuestionId + 100L;
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), Collections.singletonList(surveyBundle.options().get(0).getId()))
+                // 유효하지 않은 문항
+                .addAnswers(invalidQuestionId, List.of(1L, 2L)) // 옵션은 어떤 값이든 무방 (문항 단계에서 걸러짐)
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.INVALID_QUESTION, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("최소 1개의 옵션을 선택하지 않으면 설문 참여 불가")
+    void surveyParticipationNotChooseOption() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), Collections.singletonList(surveyBundle.options().get(0).getId()))
+                // 옵션 선택 X
+                .addAnswers(surveyBundle.questions().get(1).getId(), new ArrayList<>())
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.NOT_CHOOSE_OPTION, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("단일 선택 문항은 옵션 2개이상 선택 불가")
+    void surveyParticipationOneChooseOption() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                // 옵션 2개 선택
+                .addAnswers(surveyBundle.questions().get(0).getId(), List.of(surveyBundle.options().get(0).getId(),surveyBundle.options().get(1).getId()))
+                .addAnswers(surveyBundle.questions().get(1).getId(), Collections.singletonList(surveyBundle.options().get(2).getId()))
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.ONE_CHOOSE_OPTION, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 옵션이 있는 경우 설문 참여 불가")
+    void surveyParticipationInvalidOption() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), List.of(surveyBundle.options().get(0).getId()))
+                // 유효하지 않는 옵션 선택 (첫번째 문항의 첫번째 옵션 아이디)
+                .addAnswers(surveyBundle.questions().get(1).getId(), List.of(surveyBundle.options().get(0).getId()))
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.INVALID_OPTION, seokveyException.getErrorType());
     }
 
 

@@ -1,5 +1,7 @@
 package com.ysgpjt.seokvey.support;
 
+import com.ysgpjt.seokvey.survey.dto.SurveyAnswerRequest;
+import com.ysgpjt.seokvey.survey.dto.SurveyParticipationRequest;
 import com.ysgpjt.seokvey.survey.entity.Question;
 import com.ysgpjt.seokvey.survey.entity.QuestionOption;
 import com.ysgpjt.seokvey.survey.entity.Survey;
@@ -125,6 +127,10 @@ public class TestBuilders {
         private LocalDateTime endDt = LocalDateTime.now().plusDays(1);
         private Boolean resultGenerated = false;
 
+        // 문항, 옵션 id 1부터 증가
+        Long questionId = 1L;
+        Long optId = 1L;
+
         // 내부 조립 상태
         private Survey survey; // lazy ensure
         private final List<Question> questions = new ArrayList<>();
@@ -161,6 +167,7 @@ public class TestBuilders {
                                               List<String> optionContents) {
             Survey s = ensureSurvey(); // 먼저 설문을 만들어 둠
             Question q = new QuestionBuilder()
+                    .id(questionId++)
                     .survey(s) // FK 주입 (세터/의도메서드 없이)
                     .content(content)
                     .selectionType(selectionType)
@@ -168,9 +175,11 @@ public class TestBuilders {
                     .build();
             questions.add(q);
 
+            // 옵션 순서 1부터 증가
             int optOrder = 1;
             for (String oc : optionContents) {
                 QuestionOption opt = new QuestionOptionBuilder()
+                        .id(optId++)
                         .question(q) // FK 주입
                         .content(oc)
                         .orderNo(optOrder++)
@@ -201,4 +210,40 @@ public class TestBuilders {
 
     /* 번들 DTO(테스트에서 편하게 쓰라고 제공) */
     public record SurveyBundle(Survey survey, List<Question> questions, List<QuestionOption> options) {}
+
+    public static class SurveyParticipationBuilder {
+        private Long surveyId;
+        private LocalDateTime surveyDt;
+        private final List<SurveyAnswerRequest> answers = new ArrayList<>();
+
+        public static SurveyParticipationBuilder create() { return new SurveyParticipationBuilder(); }
+
+        public SurveyParticipationBuilder surveyId(Long surveyId) {
+            this.surveyId = surveyId;
+            return this;
+        }
+
+        public SurveyParticipationBuilder surveyDt(LocalDateTime surveyDt) {
+            this.surveyDt = surveyDt;
+            return this;
+        }
+
+        public SurveyParticipationBuilder addAnswers(Long questionId, List<Long> questionOptionIds) {
+            SurveyAnswerRequest answerRequest = SurveyAnswerRequest.builder()
+                    .questionId(questionId)
+                    .questionOptionIds(questionOptionIds)
+                    .build();
+            answers.add(answerRequest);
+            return this;
+        }
+        public SurveyParticipationRequest build() {
+            return SurveyParticipationRequest.builder()
+                    .surveyId(surveyId)
+                    .surveyDt(surveyDt)
+                    .answers(answers)
+                    .build();
+        }
+
+    }
+
 }
