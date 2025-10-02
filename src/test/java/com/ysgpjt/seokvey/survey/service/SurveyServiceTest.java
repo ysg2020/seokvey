@@ -1,6 +1,7 @@
 package com.ysgpjt.seokvey.survey.service;
 
-import com.ysgpjt.seokvey.common.CookieUtil;
+import com.ysgpjt.seokvey.common.exception.SeokveyException;
+import com.ysgpjt.seokvey.support.TestBuilders;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.Question;
 import com.ysgpjt.seokvey.survey.entity.QuestionOption;
@@ -10,8 +11,8 @@ import com.ysgpjt.seokvey.survey.repository.QuestionOptionRepository;
 import com.ysgpjt.seokvey.survey.repository.QuestionRepository;
 import com.ysgpjt.seokvey.survey.repository.SurveyParticipationRepository;
 import com.ysgpjt.seokvey.survey.repository.SurveyRepository;
+import com.ysgpjt.seokvey.type.ErrorType;
 import com.ysgpjt.seokvey.type.SeletionType;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("local")
@@ -80,10 +80,10 @@ class SurveyServiceTest {
         SurveyCreateRequest surveyCreateRequest = createSurvey("문항이 없는 설문", "설명", null);
 
         // when
-        SurveyResponse survey = surveyService.createSurvey(surveyCreateRequest);
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.createSurvey(surveyCreateRequest));
 
         // then
-        assertEquals(survey, null);
+        assertEquals(ErrorType.NOT_ENOUGH_QUESTION, seokveyException.getErrorType());
 
     }
     @DisplayName("문항 옵션이 없는 설문 생성 불가")
@@ -94,10 +94,10 @@ class SurveyServiceTest {
         SurveyCreateRequest surveyCreateRequest = createSurvey("문항 옵션이 없는 설문", "설명", Collections.singletonList(question));
 
         // when
-        SurveyResponse survey = surveyService.createSurvey(surveyCreateRequest);
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.createSurvey(surveyCreateRequest));
 
         // then
-        assertEquals(survey, null);
+        assertEquals(ErrorType.NOT_ENOUGH_OPTION, seokveyException.getErrorType());
 
     }
 
@@ -110,10 +110,10 @@ class SurveyServiceTest {
         SurveyCreateRequest surveyCreateRequest = createSurvey("문항 옵션이 1개인 설문", "설명", Collections.singletonList(question));
 
         // when
-        SurveyResponse survey = surveyService.createSurvey(surveyCreateRequest);
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.createSurvey(surveyCreateRequest));
 
         // then
-        assertEquals(survey, null);
+        assertEquals(ErrorType.NOT_ENOUGH_OPTION, seokveyException.getErrorType());
 
     }
 
@@ -214,6 +214,45 @@ class SurveyServiceTest {
         SurveyParticipation surveyParticipation = surveyParticipationRepository.findBySurvey(survey).get();
         assertNotNull(participation.getSurveyId());
         assertEquals(participation.getSurveyId(),surveyParticipation.getSurvey().getId());
+
+    }
+
+    @Test
+    void surveyParticipationNotEnoughQuestion() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+        // 설문 참여 데이터 생성
+        // 두번쨰 문항 응답을 하지 않은 경우
+        SurveyAnswerRequest surveyAnswerRequest = SurveyAnswerRequest.builder()
+                // 첫번째 문항에서 첫번째 옵션 선택
+                .questionId(surveyBundle.questions().get(0).getId())
+                .questionOptionIds(Collections.singletonList(surveyBundle.options().get(0).getId()))
+                .build();
+
+        SurveyParticipationRequest request = SurveyParticipationRequest.builder()
+                .surveyId(surveyBundle.survey().getId())
+                .answers(Collections.singletonList(surveyAnswerRequest))
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        assertEquals(ErrorType.NO_RESPONSE_QUESTION, seokveyException.getErrorType());
+
 
     }
 
