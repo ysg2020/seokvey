@@ -15,8 +15,10 @@ import com.ysgpjt.seokvey.type.ErrorType;
 import com.ysgpjt.seokvey.type.SeletionType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -24,25 +26,27 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 
-@SpringBootTest
 @ActiveProfiles("local")
+@ExtendWith(MockitoExtension.class)
 class SurveyServiceTest {
 
-    @Autowired
-    private SurveyService surveyService;
-
-    @Autowired
+    @Mock
     private SurveyRepository surveyRepository;
 
-    @Autowired
+    @Mock
     private QuestionRepository questionRepository;
 
-    @Autowired
+    @Mock
     private QuestionOptionRepository questionOptionRepository;
 
-    @Autowired
+    @Mock
     private SurveyParticipationRepository surveyParticipationRepository;
+
+    @InjectMocks
+    private SurveyService surveyService;
 
 
     // --- 테스트 유틸 메서드 ---
@@ -244,6 +248,10 @@ class SurveyServiceTest {
         String anonToken = UUID.randomUUID().toString();
         String ipAddress = "127.0.0.1";
 
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(questionRepository.findBySurvey(any())).willReturn(surveyBundle.questions());
+
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
 
@@ -285,6 +293,10 @@ class SurveyServiceTest {
         String anonToken = UUID.randomUUID().toString();
         String ipAddress = "127.0.0.1";
 
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(questionRepository.findBySurvey(any())).willReturn(surveyBundle.questions());
+
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
 
@@ -319,6 +331,10 @@ class SurveyServiceTest {
         String anonToken = UUID.randomUUID().toString();
         String ipAddress = "127.0.0.1";
 
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(questionRepository.findBySurvey(any())).willReturn(surveyBundle.questions());
+
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
 
@@ -352,6 +368,11 @@ class SurveyServiceTest {
 
         String anonToken = UUID.randomUUID().toString();
         String ipAddress = "127.0.0.1";
+
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(questionRepository.findBySurvey(any())).willReturn(surveyBundle.questions());
+        given(questionOptionRepository.findAllById(any())).willReturn(surveyBundle.options());
 
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
@@ -388,11 +409,133 @@ class SurveyServiceTest {
         String anonToken = UUID.randomUUID().toString();
         String ipAddress = "127.0.0.1";
 
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(questionRepository.findBySurvey(any())).willReturn(surveyBundle.questions());
+        given(questionOptionRepository.findAllById(any())).willReturn(surveyBundle.options());
+
+
+
         // when
         SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
 
         // then
         assertEquals(ErrorType.INVALID_OPTION, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("이미 설문 참여한 비회원 토큰")
+    void surveyParticipationAlreadyAnonymousToken() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), List.of(surveyBundle.options().get(0).getId()))
+                .addAnswers(surveyBundle.questions().get(1).getId(), List.of(surveyBundle.options().get(3).getId()))
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(surveyParticipationRepository.findBySurveyAndAnonymousToken(any(),any())).willReturn(Optional.ofNullable(SurveyParticipation.builder().build()));
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.ALREADY_SURVEY_ANONYMOUS_TOKEN, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("이미 설문 참여한 ip 주소")
+    void surveyParticipationAlreadyIpAddress() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), List.of(surveyBundle.options().get(0).getId()))
+                .addAnswers(surveyBundle.questions().get(1).getId(), List.of(surveyBundle.options().get(3).getId()))
+                .build();
+
+        String anonToken = UUID.randomUUID().toString();
+        String ipAddress = "127.0.0.1";
+
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(surveyParticipationRepository.findBySurveyAndAnonymousToken(any(),any())).willReturn(Optional.empty());
+        given(surveyParticipationRepository.findBySurveyAndIpAddress(any(),any())).willReturn(Optional.ofNullable(SurveyParticipation.builder().build()));
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.ALREADY_SURVEY_IPADDRESS, seokveyException.getErrorType());
+    }
+
+    @Test
+    @DisplayName("이미 설문 참여한 사용자")
+    void surveyParticipationAlreadyConsumer() {
+        // given
+        // 설문 테스트 데이터
+        // 정상 설문
+        // 첫번째 문항 : 옵션 1, 옵션 2
+        // 두번쨰 문항 : 옵션 A, 옵션 B, 옵션 C
+        TestBuilders.SurveyBundle surveyBundle = TestBuilders.SurveyGraphBuilder.create()
+                .surveyId(1L)
+                .surveyTitle("정상 설문")
+                .surveyDescription("설명")
+                .addQuestion("첫번째 문항", SeletionType.SINGLE, 1, List.of("옵션 1", "옵션 2"))
+                .addQuestion("두번째 문항", SeletionType.MULTIPLE, 2, List.of("옵션 A", "옵션 B", "옵션 C"))
+                .build();
+
+
+        // 설문 참여 데이터 생성
+        SurveyParticipationRequest request = TestBuilders.SurveyParticipationBuilder.create()
+                .surveyId(surveyBundle.survey().getId())
+                .addAnswers(surveyBundle.questions().get(0).getId(), List.of(surveyBundle.options().get(0).getId()))
+                .addAnswers(surveyBundle.questions().get(1).getId(), List.of(surveyBundle.options().get(3).getId()))
+                .build();
+
+        String anonToken = null;
+        String ipAddress = "127.0.0.1";
+
+        // db 조회 모킹
+        given(surveyRepository.findById(any())).willReturn(Optional.of(surveyBundle.survey()));
+        given(surveyParticipationRepository.findBySurveyAndUserId(any(),any())).willReturn(Optional.ofNullable(SurveyParticipation.builder().build()));
+
+        // when
+        SeokveyException seokveyException = assertThrows(SeokveyException.class, () -> surveyService.participateSurvey(request, anonToken, ipAddress));
+
+        // then
+        assertEquals(ErrorType.ALREADY_SURVEY_CONSUMER, seokveyException.getErrorType());
     }
 
 
