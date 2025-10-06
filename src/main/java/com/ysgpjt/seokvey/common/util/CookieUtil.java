@@ -1,4 +1,4 @@
-package com.ysgpjt.seokvey.common;
+package com.ysgpjt.seokvey.common.util;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +37,7 @@ public class CookieUtil {
             response.addCookie(cookie);
         }
 
-        // 익명 사용자 토큰 발급
+        // 비회원 토큰 발급
         public static String getAnonymousToken(HttpServletRequest request, HttpServletResponse response) {
             String token = getCookie(request, ANON_COOKIE_NAME);
             if (token != null) {
@@ -45,7 +45,7 @@ public class CookieUtil {
             }
             String newToken = UUID.randomUUID().toString();
             addCookie(response, ANON_COOKIE_NAME, newToken, 60 * 60 * 24 * 365); // 1년
-            log.info("익명 사용자 토큰 발급 : " + newToken);
+            log.info("비회원 토큰 발급 : " + newToken);
             return newToken;
         }
 
