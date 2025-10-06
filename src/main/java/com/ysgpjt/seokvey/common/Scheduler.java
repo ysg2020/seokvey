@@ -1,6 +1,7 @@
 package com.ysgpjt.seokvey.common;
 
 
+import com.ysgpjt.seokvey.common.dto.PagedResponse;
 import com.ysgpjt.seokvey.survey.dto.SurveyResultQuery;
 import com.ysgpjt.seokvey.survey.dto.SurveyResultReadRequest;
 import com.ysgpjt.seokvey.survey.entity.*;
@@ -68,7 +69,7 @@ public class Scheduler {
                     .build();
 
             // 문항 옵션 결과 생성
-            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findSurveyResult(resultRequest);
+            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findSurveyResult(resultRequest).getItems();
             for (SurveyResultQuery surveyResultQuery : surveyResultQueryList) {
                 SurveyResult surveyResult = surveyResultMap.get(surveyResultQuery.getSurveyId());
                 Question question = questionRepository.findById(surveyResultQuery.getQuestionId()).get();

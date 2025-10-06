@@ -2,6 +2,7 @@ package com.ysgpjt.seokvey.survey.service;
 
 import com.ysgpjt.seokvey.common.HierarchyMapper;
 import com.ysgpjt.seokvey.common.SecurityUtil;
+import com.ysgpjt.seokvey.common.dto.PagedResponse;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.*;
 import com.ysgpjt.seokvey.survey.repository.*;
@@ -92,31 +93,21 @@ public class SurveyService {
 
     }
 
-    public SurveyListResponse getAllSurvey(SurveyReadRequest surveyReadRequest) {
-        List<Survey> surveyList = surveyQueryRepository.findAllSurvey(surveyReadRequest);
-        Long allSurveyTotalCount = surveyQueryRepository.findAllSurveyTotalCount();
-
-        List<SurveyResponse> surveyResponseList = surveyList.stream()
-                .map(SurveyResponse::fromSurvey)
-                .toList();
-
-        return SurveyListResponse.builder()
-                .surveys(surveyResponseList)
-                .surveyTotalCount(allSurveyTotalCount)
-                .build();
+    public PagedResponse<SurveyResponse> getAllSurvey(SurveyReadRequest surveyReadRequest) {
+        PagedResponse<SurveyResponse> allSurvey = surveyQueryRepository.findAllSurvey(surveyReadRequest);
+        return allSurvey;
 
     }
 
     public SurveyResponse getSurvey(SurveyReadRequest surveyReadRequest) {
         Survey survey = surveyQueryRepository.findSurvey(surveyReadRequest);
-        List<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
-        Long questionTotalCount = surveyQueryRepository.findQuestionTotalCount(surveyReadRequest);
+        PagedResponse<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
 
         // 문항과 문항 옵션 계층 구조 변환
         // Flat List -> 계층 구조로 변환
         List<QuestionResponse> questions = HierarchyMapper.toHierarchy(
                 // Param 1 : 평탄화된 데이터 리스트
-                getQuestionQueryList,
+                getQuestionQueryList.getItems(),
                 // Param 2 : 부모 ID 추출 함수
                 QuestionQuery::getQuestionId,
                 // Param 3 : 부모 객체 생성 함수
@@ -126,7 +117,8 @@ public class SurveyService {
                         .selectionType(p.getSelectionType())
                         .orderNo(p.getQuestionOrderNo())
                         .options(new ArrayList<>())
-                        .questionTotalCount(questionTotalCount)
+                        .questionTotalCount(getQuestionQueryList.getTotalCount())
+                        .questionTotalPages(getQuestionQueryList.getTotalPages())
                         .build(),
                 // Param 4 : 부모에 자식 붙이는 함수
                 (question, row) -> {
@@ -154,12 +146,11 @@ public class SurveyService {
     }
 
     public List<QuestionResponse> getQuestion(SurveyReadRequest surveyReadRequest) {
-        List<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
-        Long questionTotalCount = surveyQueryRepository.findQuestionTotalCount(surveyReadRequest);
+        PagedResponse<QuestionQuery> getQuestionQueryList = surveyQueryRepository.findQuestion(surveyReadRequest);
         // Flat List -> 계층 구조로 변환
         List<QuestionResponse> result = HierarchyMapper.toHierarchy(
                 // Param 1 : 평탄화된 데이터 리스트
-                getQuestionQueryList,
+                getQuestionQueryList.getItems(),
                 // Param 2 : 부모 ID 추출 함수
                 QuestionQuery::getQuestionId,
                 // Param 3 : 부모 객체 생성 함수
@@ -169,7 +160,8 @@ public class SurveyService {
                         .selectionType(p.getSelectionType())
                         .orderNo(p.getQuestionOrderNo())
                         .options(new ArrayList<>())
-                        .questionTotalCount(questionTotalCount)
+                        .questionTotalCount(getQuestionQueryList.getTotalCount())
+                        .questionTotalPages(getQuestionQueryList.getTotalPages())
                         .build(),
                 // Param 4 : 부모에 자식 붙이는 함수
                 (question, row) -> {
@@ -450,11 +442,10 @@ public class SurveyService {
         return surveyParticipation;
     }
 
-    public List<SurveyParticipationResponse> getSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest) {
-        List<SurveyParticipationQuery> surveyParticipation = surveyQueryRepository.findSurveyParticipation(surveyParticipationReadRequest);
-
-        List<SurveyParticipationResponse> result = HierarchyMapper.toHierarchy(
-                surveyParticipation
+    public PagedResponse<SurveyParticipationResponse> getSurveyParticipation(SurveyParticipationReadRequest surveyParticipationReadRequest) {
+        PagedResponse<SurveyParticipationQuery> surveyParticipation = surveyQueryRepository.findSurveyParticipation(surveyParticipationReadRequest);
+        List<SurveyParticipationResponse> items = HierarchyMapper.toHierarchy(
+                surveyParticipation.getItems()
                 , SurveyParticipationQuery::getSurveyParticipationId
                 , p -> SurveyParticipationResponse.builder()
                         .surveyParticipationId(p.getSurveyParticipationId())
@@ -491,14 +482,17 @@ public class SurveyService {
                 }
         );
 
-        return result;
+        return new PagedResponse<>(items,surveyParticipation.getPage(),surveyParticipation.getSize(),surveyParticipation.getTotalCount(),surveyParticipation.getTotalPages());
 
     }
 
-    public List<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
-        List<SurveyResultQuery> surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
-        List<SurveyResultResponse> result = HierarchyMapper.toHierarchy(
-                surveyResult
+    public PagedResponse<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
+        // 평면화된 조회
+        PagedResponse<SurveyResultQuery> surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+
+        // 계층 구조로 변환
+        List<SurveyResultResponse> items = HierarchyMapper.toHierarchy(
+                surveyResult.getItems()
                 , SurveyResultQuery::getSurveyId
                 , p -> SurveyResultResponse.builder()
                         .surveyId(p.getSurveyId())
@@ -534,6 +528,7 @@ public class SurveyService {
 
                 }
         );
-        return result;
+        //계층구조로 변환 후 다시 PageResponse에 담아주기
+        return new PagedResponse<>(items,surveyResult.getPage(),surveyResult.getSize(),surveyResult.getTotalCount(),surveyResult.getTotalPages());
     }
 }

@@ -2,6 +2,7 @@ package com.ysgpjt.seokvey.survey.controller;
 
 import com.ysgpjt.seokvey.common.CookieUtil;
 import com.ysgpjt.seokvey.common.SecurityUtil;
+import com.ysgpjt.seokvey.common.dto.PagedResponse;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.service.SurveyService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +20,7 @@ public class SurveyController {
     private final SurveyService surveyService;
 
     @GetMapping("/all")
-    public SurveyListResponse getAllSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
+    public PagedResponse<SurveyResponse> getAllSurvey(@RequestBody SurveyReadRequest surveyReadRequest) {
         return surveyService.getAllSurvey(surveyReadRequest);
     }
     @GetMapping
@@ -43,7 +44,7 @@ public class SurveyController {
         return surveyService.deleteSurvey(surveyReadRequest);
     }
     @GetMapping("/participation")
-    public List<SurveyParticipationResponse> getSurveyParticipation(@RequestBody SurveyParticipationReadRequest surveyParticipationReadRequest) {
+    public PagedResponse<SurveyParticipationResponse> getSurveyParticipation(@RequestBody SurveyParticipationReadRequest surveyParticipationReadRequest) {
         return surveyService.getSurveyParticipation(surveyParticipationReadRequest);
     }
     @PostMapping("/participation")
@@ -64,7 +65,7 @@ public class SurveyController {
         return surveyService.participateSurvey(surveyParticipationRequest,anonymousToken,ipAddress);
     }
     @GetMapping("/result")
-    public List<SurveyResultResponse> getSurveyResult(@RequestBody SurveyResultReadRequest surveyResultReadRequest) {
+    public PagedResponse<SurveyResultResponse> getSurveyResult(@RequestBody SurveyResultReadRequest surveyResultReadRequest) {
         return surveyService.getSurveyResult(surveyResultReadRequest);
     }
 
