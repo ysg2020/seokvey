@@ -186,53 +186,38 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .leftJoin(sa).on(sa.questionOption.eq(o)) // option -> answers
                 .where(qSub.id.eq(q.id));
 
-        List<SurveyResultQuery> result = List.of();
+        BooleanExpression whereCond;
 
         // 결과 조회인 경우 (단건 조회)
         if (surveyResultReadRequest.getSurveyId() != null) {
-            result = mainQueryFactory
-                    .select(Projections.constructor(SurveyResultQuery.class
-                            , s.id
-                            , s.title
-                            , q.id
-                            , q.content
-                            , o.id
-                            , o.content
-                            , sa.id.count().as("selected_count")
-                            , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
-                    ))
-                    .from(s)
-                    .join(q).on(q.survey.eq(s))
-                    .join(o).on(o.question.eq(q))
-                    .leftJoin(sa).on(sa.questionOption.eq(o))
-                    .where(s.id.eq(surveyResultReadRequest.getSurveyId()))
-                    .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
-                    .fetch();
+            whereCond = s.id.eq(surveyResultReadRequest.getSurveyId());
 
-        // 결과 생성을 위한 조회인 경우 (다건 조회)
-        } else if (surveyResultReadRequest.getSurveyIdList() != null ) {
-            result = mainQueryFactory
-                    .select(Projections.constructor(SurveyResultQuery.class
-                            , s.id
-                            , s.title
-                            , q.id
-                            , q.content
-                            , o.id
-                            , o.content
-                            , sa.id.count().as("selected_count")
-                            , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
-                    ))
-                    .from(s)
-                    .join(q).on(q.survey.eq(s))
-                    .join(o).on(o.question.eq(q))
-                    .leftJoin(sa).on(sa.questionOption.eq(o))
-                    .where(s.id.in(surveyResultReadRequest.getSurveyIdList()))
-                    .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
-                    .fetch();
-
+            // 결과 생성을 위한 조회인 경우 (다건 조회)
+        } else if (surveyResultReadRequest.getSurveyIdList() != null && !surveyResultReadRequest.getSurveyIdList().isEmpty()) {
+            whereCond = s.id.in(surveyResultReadRequest.getSurveyIdList());
+        } else {
+            // 조건이 없으면 비어있는 결과 리턴 (또는 예외)
+            return List.of();
         }
 
-        return result;
+        return mainQueryFactory
+                .select(Projections.constructor(SurveyResultQuery.class
+                        , s.id
+                        , s.title
+                        , q.id
+                        , q.content
+                        , o.id
+                        , o.content
+                        , sa.id.count().as("selected_count")
+                        , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
+                ))
+                .from(s)
+                .join(q).on(q.survey.eq(s))
+                .join(o).on(o.question.eq(q))
+                .leftJoin(sa).on(sa.questionOption.eq(o))
+                .where(whereCond)
+                .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
+                .fetch();
     }
 
     @Override
