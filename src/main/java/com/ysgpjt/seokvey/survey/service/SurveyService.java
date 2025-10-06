@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -487,18 +488,30 @@ public class SurveyService {
     }
 
     public PagedResponse<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
-        PagedResponse<SurveyResultQuery> surveyResult;
+        PagedResponse<SurveyResultQuery> surveyResult = null;
 
-        // 실시간 조회 인경우
-        if (surveyResultReadRequest.getLiveYn()) {
-            surveyResult = surveyQueryRepository.findLiveSurveyResult(surveyResultReadRequest);
+        if (surveyResultReadRequest.getSurveyIdList().size() != 1) {
+            log.warn("설문 결과 조회시 설문 아이디는 1개여야 합니다.");
+
+        }
+
+        Optional<Survey> byId = surveyRepository.findById(surveyResultReadRequest.getSurveyIdList().get(0));
+        if (byId.isPresent()) {
+            Survey survey = byId.get();
+            // 설문 종료일이 지났고 결과 생성 되어있는 경우 : db에서 조회
+            if (survey.getEndDt().isBefore(LocalDateTime.now()) && survey.getResultGenerated().equals(true)) {
+                surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+            // 아닌 경우 : 실시간 조회
+            } else {
+                surveyResult = surveyQueryRepository.findLiveSurveyResult(surveyResultReadRequest);
+            }
         } else {
-            surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+            log.warn("존재하지 않는 설문입니다.");
         }
 
         // 계층 구조로 변환
         List<SurveyResultResponse> items = HierarchyMapper.toHierarchy(
-                surveyResult.getItems()
+                Objects.requireNonNull(surveyResult).getItems()
                 , SurveyResultQuery::getSurveyId
                 , p -> SurveyResultResponse.builder()
                         .surveyId(p.getSurveyId())
