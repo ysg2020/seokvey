@@ -21,7 +21,7 @@ public class SurveyResult extends BaseEntity {
     private Long id;
 
     @JoinColumn
-    @ManyToOne
+    @OneToOne
     private Survey survey;      // 설문 고유값
 
     @Column
