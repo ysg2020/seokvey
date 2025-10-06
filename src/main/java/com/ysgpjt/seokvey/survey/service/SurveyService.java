@@ -487,8 +487,14 @@ public class SurveyService {
     }
 
     public PagedResponse<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
-        // 평면화된 조회
-        PagedResponse<SurveyResultQuery> surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+        PagedResponse<SurveyResultQuery> surveyResult;
+
+        // 실시간 조회 인경우
+        if (surveyResultReadRequest.getLiveYn()) {
+            surveyResult = surveyQueryRepository.findLiveSurveyResult(surveyResultReadRequest);
+        } else {
+            surveyResult = surveyQueryRepository.findSurveyResult(surveyResultReadRequest);
+        }
 
         // 계층 구조로 변환
         List<SurveyResultResponse> items = HierarchyMapper.toHierarchy(

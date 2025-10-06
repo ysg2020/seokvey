@@ -69,7 +69,7 @@ public class Scheduler {
                     .build();
 
             // 문항 옵션 결과 생성
-            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findSurveyResult(resultRequest).getItems();
+            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findLiveSurveyResult(resultRequest).getItems();
             for (SurveyResultQuery surveyResultQuery : surveyResultQueryList) {
                 SurveyResult surveyResult = surveyResultMap.get(surveyResultQuery.getSurveyId());
                 Question question = questionRepository.findById(surveyResultQuery.getQuestionId()).get();
