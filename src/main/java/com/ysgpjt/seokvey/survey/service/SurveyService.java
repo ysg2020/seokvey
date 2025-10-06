@@ -34,7 +34,7 @@ public class SurveyService {
     @Transactional
     public SurveyResponse createSurvey(SurveyCreateRequest surveyCreateRequest) {
         // 설문 문항이 없는 경우
-        if(surveyCreateRequest.getQuestions() == null) {
+        if(surveyCreateRequest.getQuestions() == null || surveyCreateRequest.getQuestions().isEmpty()) {
             log.warn("설문 문항이 없습니다.");
             throw new SeokveyException(ErrorType.NOT_ENOUGH_QUESTION);
         }
