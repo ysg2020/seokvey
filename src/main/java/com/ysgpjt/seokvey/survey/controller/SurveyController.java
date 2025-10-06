@@ -1,8 +1,8 @@
 package com.ysgpjt.seokvey.survey.controller;
 
-import com.ysgpjt.seokvey.common.CookieUtil;
-import com.ysgpjt.seokvey.common.SecurityUtil;
 import com.ysgpjt.seokvey.common.dto.PagedResponse;
+import com.ysgpjt.seokvey.common.util.CookieUtil;
+import com.ysgpjt.seokvey.common.util.SecurityUtil;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.service.SurveyService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,7 +65,7 @@ public class SurveyController {
         return surveyService.participateSurvey(surveyParticipationRequest,anonymousToken,ipAddress);
     }
     @GetMapping("/result")
-    public PagedResponse<SurveyResultResponse> getSurveyResult(@RequestBody SurveyResultReadRequest surveyResultReadRequest) {
+    public List<SurveyResultResponse> getSurveyResult(@RequestBody SurveyResultReadRequest surveyResultReadRequest) {
         return surveyService.getSurveyResult(surveyResultReadRequest);
     }
 

@@ -6,6 +6,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.ysgpjt.seokvey.common.dto.PagedResponse;
+import com.ysgpjt.seokvey.common.exception.SeokveyException;
 import com.ysgpjt.seokvey.survey.dto.*;
 import com.ysgpjt.seokvey.survey.entity.*;
 import com.ysgpjt.seokvey.survey.repository.SurveyQueryRepository;
@@ -169,14 +170,13 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
     }
 
     @Override
-    public PagedResponse<SurveyResultQuery> findLiveSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
+    public List<SurveyResultQuery> findLiveSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
         QSurvey s = QSurvey.survey;
         QQuestion q = QQuestion.question;
         QQuestionOption o = QQuestionOption.questionOption;
         QSurveyAnswer sa = QSurveyAnswer.surveyAnswer;
         QQuestion qSub = new QQuestion("qSub");
-        int page = surveyResultReadRequest.getPage();
-        int size = surveyResultReadRequest.getSize();
+
 
         // 서브쿼리: 각 문항별 총 선택 수
         Expression<Long> totalCountSubQuery = JPAExpressions
@@ -186,75 +186,62 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 .leftJoin(sa).on(sa.questionOption.eq(o)) // option -> answers
                 .where(qSub.id.eq(q.id));
 
-        int totalCount;
-        int totalPages;
-        Long tc = mainQueryFactory
-                .select(s.id.count())
-                .from(s)
-                .where(s.id.in(surveyResultReadRequest.getSurveyIdList()))
-                .fetchOne();
+        List<SurveyResultQuery> result = List.of();
 
-        totalCount = Math.toIntExact(tc == null ? 0L : tc);
-        totalPages = totalCount == 0 ? 0 : ((totalCount + size - 1) / size);
+        // 결과 조회인 경우 (단건 조회)
+        if (surveyResultReadRequest.getSurveyId() != null) {
+            result = mainQueryFactory
+                    .select(Projections.constructor(SurveyResultQuery.class
+                            , s.id
+                            , s.title
+                            , q.id
+                            , q.content
+                            , o.id
+                            , o.content
+                            , sa.id.count().as("selected_count")
+                            , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
+                    ))
+                    .from(s)
+                    .join(q).on(q.survey.eq(s))
+                    .join(o).on(o.question.eq(q))
+                    .leftJoin(sa).on(sa.questionOption.eq(o))
+                    .where(s.id.eq(surveyResultReadRequest.getSurveyId()))
+                    .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
+                    .fetch();
 
-        // 설문 결과 id 리스트 조회 (페이징 처리)
-        List<Long> surveyResultIdList = mainQueryFactory
-                .select(s.id)
-                .from(s)
-                .where(s.id.in(surveyResultReadRequest.getSurveyIdList()))
-                .offset((long) surveyResultReadRequest.getPage() * surveyResultReadRequest.getSize())
-                .limit(surveyResultReadRequest.getSize())
-                .fetch();
+        // 결과 생성을 위한 조회인 경우 (다건 조회)
+        } else if (surveyResultReadRequest.getSurveyIdList() != null ) {
+            result = mainQueryFactory
+                    .select(Projections.constructor(SurveyResultQuery.class
+                            , s.id
+                            , s.title
+                            , q.id
+                            , q.content
+                            , o.id
+                            , o.content
+                            , sa.id.count().as("selected_count")
+                            , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
+                    ))
+                    .from(s)
+                    .join(q).on(q.survey.eq(s))
+                    .join(o).on(o.question.eq(q))
+                    .leftJoin(sa).on(sa.questionOption.eq(o))
+                    .where(s.id.in(surveyResultReadRequest.getSurveyIdList()))
+                    .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
+                    .fetch();
 
-        // 메인 쿼리
-        List<SurveyResultQuery> items = mainQueryFactory
-                .select(Projections.constructor(SurveyResultQuery.class
-                        , s.id
-                        , s.title
-                        , q.id
-                        , q.content
-                        , o.id
-                        , o.content
-                        , sa.id.count().as("selected_count")
-                        , sa.id.count().divide(totalCountSubQuery).multiply(100).as("selected_ratio")
-                ))
-                .from(s)
-                .join(q).on(q.survey.eq(s))
-                .join(o).on(o.question.eq(q))
-                .leftJoin(sa).on(sa.questionOption.eq(o))
-                .where(s.id.in(surveyResultIdList))
-                .groupBy(s.id, s.title, q.id, q.content, o.id, o.content)
-                .fetch();
+        }
 
-        return new PagedResponse<>(items,page,size,totalCount,totalPages);
+        return result;
     }
 
     @Override
-    public PagedResponse<SurveyResultQuery> findSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
+    public List<SurveyResultQuery> findSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
         QSurveyResult sr = QSurveyResult.surveyResult;
         QQuestionOptionResult qr = QQuestionOptionResult.questionOptionResult;
-        int page = surveyResultReadRequest.getPage();
-        int size = surveyResultReadRequest.getSize();
 
-        int totalCount;
-        int totalPages;
-        Long tc = mainQueryFactory
-                .select(sr.id.count())
-                .from(sr)
-                .fetchOne();
-
-        totalCount = Math.toIntExact(tc == null ? 0L : tc);
-        totalPages = totalCount == 0 ? 0 : ((totalCount + size - 1) / size);
-
-        // 설문 결과 id 리스트 조회 (페이징 처리)
-        List<Long> surveyResultIdList = mainQueryFactory
-                .select(sr.id)
-                .from(sr)
-                .offset((long) surveyResultReadRequest.getPage() * surveyResultReadRequest.getSize())
-                .limit(surveyResultReadRequest.getSize())
-                .fetch();
         // 메인 쿼리
-        List<SurveyResultQuery> items = mainQueryFactory
+        List<SurveyResultQuery> result = mainQueryFactory
                 .select(Projections.constructor(SurveyResultQuery.class
                         , sr.survey.id
                         , sr.title
@@ -267,9 +254,9 @@ public class SurveyQueryRepositoryImpl implements SurveyQueryRepository {
                 ))
                 .from(sr)
                 .join(qr).on(qr.surveyResult.eq(sr))
-                .where(sr.id.in(surveyResultIdList))
+                .where(sr.id.eq(surveyResultReadRequest.getSurveyId()))
                 .groupBy(sr.survey.id, sr.title, qr.question.id, qr.questionContent, qr.questionOption.id, qr.questionOptionContent,qr.selectedCount, qr.selectedRatio)
                 .fetch();
-        return new PagedResponse<>(items,page,size,totalCount,totalPages);
+        return result;
     }
 }

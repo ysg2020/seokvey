@@ -10,6 +10,7 @@ public enum ErrorType {
 
     // 설문
     ALREADY_SURVEY_PARTICIPATION(HttpStatus.BAD_REQUEST,"이미 설문에 참여한 사람이 있습니다."),
+    NOT_FOUND_SURVEY(HttpStatus.BAD_REQUEST,"존재하지 않는 설문입니다."),
 
     // 문항
     NOT_ENOUGH_QUESTION(HttpStatus.BAD_REQUEST,"문항이 없습니다."),

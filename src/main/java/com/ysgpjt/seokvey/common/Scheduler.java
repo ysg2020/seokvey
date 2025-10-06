@@ -59,17 +59,14 @@ public class Scheduler {
         Map<Long, SurveyResult> surveyResultMap = surveyResultList.stream()
                 .collect(Collectors.toMap(sr -> sr.getSurvey().getId(), sr -> sr));
 
-
         int totalPages = (int) Math.ceil((double) endSurveyIdList.size() / size);
         for (int i = 0; i < totalPages; i++) {
             SurveyResultReadRequest resultRequest = SurveyResultReadRequest.builder()
                     .surveyIdList(endSurveyIdList)
-                    .page(i)
-                    .size(size)
                     .build();
 
             // 문항 옵션 결과 생성
-            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findLiveSurveyResult(resultRequest).getItems();
+            List<SurveyResultQuery> surveyResultQueryList = surveyQueryRepository.findLiveSurveyResult(resultRequest);
             for (SurveyResultQuery surveyResultQuery : surveyResultQueryList) {
                 SurveyResult surveyResult = surveyResultMap.get(surveyResultQuery.getSurveyId());
                 Question question = questionRepository.findById(surveyResultQuery.getQuestionId()).get();

@@ -1,7 +1,6 @@
 package com.ysgpjt.seokvey.survey.service;
 
 import com.ysgpjt.seokvey.common.HierarchyMapper;
-import com.ysgpjt.seokvey.common.SecurityUtil;
 import com.ysgpjt.seokvey.common.dto.PagedResponse;
 import com.ysgpjt.seokvey.common.exception.SeokveyException;
 import com.ysgpjt.seokvey.common.util.SecurityUtil;
@@ -494,15 +493,10 @@ public class SurveyService {
 
     }
 
-    public PagedResponse<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
-        PagedResponse<SurveyResultQuery> surveyResult = null;
+    public List<SurveyResultResponse> getSurveyResult(SurveyResultReadRequest surveyResultReadRequest) {
+        List<SurveyResultQuery> surveyResult;
 
-        if (surveyResultReadRequest.getSurveyIdList().size() != 1) {
-            log.warn("설문 결과 조회시 설문 아이디는 1개여야 합니다.");
-
-        }
-
-        Optional<Survey> byId = surveyRepository.findById(surveyResultReadRequest.getSurveyIdList().get(0));
+        Optional<Survey> byId = surveyRepository.findById(surveyResultReadRequest.getSurveyId());
         if (byId.isPresent()) {
             Survey survey = byId.get();
             // 설문 종료일이 지났고 결과 생성 되어있는 경우 : db에서 조회
@@ -514,11 +508,12 @@ public class SurveyService {
             }
         } else {
             log.warn("존재하지 않는 설문입니다.");
+            throw new SeokveyException(ErrorType.NOT_FOUND_SURVEY);
         }
 
         // 계층 구조로 변환
-        List<SurveyResultResponse> items = HierarchyMapper.toHierarchy(
-                Objects.requireNonNull(surveyResult).getItems()
+        List<SurveyResultResponse> result = HierarchyMapper.toHierarchy(
+                Objects.requireNonNull(surveyResult)
                 , SurveyResultQuery::getSurveyId
                 , p -> SurveyResultResponse.builder()
                         .surveyId(p.getSurveyId())
@@ -554,7 +549,6 @@ public class SurveyService {
 
                 }
         );
-        //계층구조로 변환 후 다시 PageResponse에 담아주기
-        return new PagedResponse<>(items,surveyResult.getPage(),surveyResult.getSize(),surveyResult.getTotalCount(),surveyResult.getTotalPages());
+        return result;
     }
 }
