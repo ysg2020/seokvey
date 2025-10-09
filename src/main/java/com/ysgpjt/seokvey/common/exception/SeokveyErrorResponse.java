@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.ErrorResponse;
 
+import java.net.URI;
+
 @Builder
 public class SeokveyErrorResponse implements ErrorResponse {
 
@@ -21,6 +23,7 @@ public class SeokveyErrorResponse implements ErrorResponse {
     public ProblemDetail getBody() {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(errorType.getHttpStatus(), errorType.getMessage());
         pd.setTitle(errorType.name());
+        pd.setType(URI.create("https://github.com/ysg2020/seokvey"));
         return pd;
     }
 }
