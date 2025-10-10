@@ -1,0 +1,22 @@
+spring.application.name: seokvey
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update   # create, create-drop, update, validate, none
+    show-sql: true       # 실행되는 SQL 출력
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+spring.datasource:
+  main:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/main?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sub:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/sub?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: com.mysql.cj.jdbc.Driver
