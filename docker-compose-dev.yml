@@ -3,9 +3,6 @@ services:
     image: ${DOCKERHUB_USERNAME}/seokvey-api:latest
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_CONFIG_ADDITIONAL_LOCATION: /config/   # ← 이 경로를 보도록
-    volumes:
-      - /srv/seokvey/config:/config                 # ← 서버의 설정을 컨테이너로
     ports:
       - "8080:8080"
     env_file:
