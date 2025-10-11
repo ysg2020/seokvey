@@ -67,8 +67,8 @@ jobs:
             password: ${{ secrets.SERVER_PASSWORD }}
             script: |
               cd /srv/seokvey
-              docker compose pull
-              docker compose up -d
+              docker compose --env-file seokvey.env -f docker-compose-dev.yml pull
+              docker compose --env-file seokvey.env -f docker-compose-dev.yml up -d --remove-orphans
 
         
 
