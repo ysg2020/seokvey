@@ -9,6 +9,11 @@ services:
       - ./seokvey.env
     depends_on: [db]
     restart: unless-stopped
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   db:
     image: mysql:8.0
@@ -22,6 +27,11 @@ services:
       - dbdata:/var/lib/mysql
       - ./mysql/initdb:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
+    logging:
+      driver: local          # 또는 json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   dbdata: {}
